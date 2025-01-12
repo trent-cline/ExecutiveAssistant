@@ -1,7 +1,7 @@
 import { Client } from '@notionhq/client';
-import { NOTION_API_KEY, NOTION_DATABASE_ID } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
-const notion = new Client({ auth: NOTION_API_KEY });
+const notion = new Client({ auth: env.NOTION_API_KEY });
 
 interface NotionNote {
     timestamp: string;
@@ -15,11 +15,11 @@ interface NotionNote {
 
 export async function addNoteToNotion(note: NotionNote) {
     try {
-        console.log('Attempting to add note to Notion with database ID:', NOTION_DATABASE_ID);
+        console.log('Attempting to add note to Notion with database ID:', env.NOTION_DATABASE_ID);
         console.log('Note data:', JSON.stringify(note, null, 2));
         
         const response = await notion.pages.create({
-            parent: { database_id: NOTION_DATABASE_ID },
+            parent: { database_id: env.NOTION_DATABASE_ID },
             properties: {
                 Name: {
                     title: [
