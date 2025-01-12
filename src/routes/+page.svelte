@@ -118,9 +118,13 @@ async function initializeRecorder() {
         audioRecorder = new MediaRecorder(stream);
         const audioChunks: BlobPart[] = [];
 
-        // Initialize speech recognition
-        if ('webkitSpeechRecognition' in window) {
-            const SpeechRecognition = (window as any).webkitSpeechRecognition;
+        // Initialize speech recognition with better mobile support
+        const SpeechRecognition = (window as any).SpeechRecognition || 
+                                (window as any).webkitSpeechRecognition || 
+                                (window as any).mozSpeechRecognition || 
+                                (window as any).msSpeechRecognition;
+                                
+        if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
@@ -140,6 +144,25 @@ async function initializeRecorder() {
 
                 transcription = finalTranscript || interimTranscript;
             };
+
+            recognition.onerror = (event: any) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    // Handle no speech detected
+                    status = 'No speech detected';
+                }
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    // Restart recognition if we're still recording
+                    recognition.start();
+                }
+            };
+        } else {
+            console.warn('Speech recognition not available');
+            // Set a flag to show a warning to the user
+            status = 'Speech recognition not available';
         }
 
         audioRecorder.ondataavailable = (event: BlobEvent) => {
