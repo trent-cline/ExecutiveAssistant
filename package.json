@@ -28,5 +28,9 @@
 		"svelte-check": "^3.6.0",
 		"typescript": "^5.0.0",
 		"vite": "^5.0.0"
+	},
+	"dependencies": {
+		"@notionhq/client": "^2.2.15",
+		"openai": "^4.78.1"
 	}
 }

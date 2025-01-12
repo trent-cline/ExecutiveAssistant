@@ -2,102 +2,197 @@
 import { onMount } from 'svelte';
 
 interface Note {
+    id: string;
     timestamp: string;
     audio: string;
     transcription: string;
+    notionId?: string;
+    category?: string;
+    priority?: 'low' | 'medium' | 'high';
+    dueDate?: string;
+    summary?: string;
 }
 
-interface AudioRecorderType {
-    mediaRecorder: MediaRecorder | null;
-    audioChunks: Blob[];
-    recognition: any; // WebkitSpeechRecognition type isn't available in standard TypeScript
-    stream: MediaStream | null;
-}
-
-class AudioRecorder implements AudioRecorderType {
-    mediaRecorder: MediaRecorder | null;
-    audioChunks: Blob[];
-    recognition: any;
-    stream: MediaStream | null;
-
-    constructor() {
-        this.mediaRecorder = null;
-        this.audioChunks = [];
-        this.recognition = null;
-        this.stream = null;
-    }
-
-    async initialize(): Promise<boolean> {
-        try {
-            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(this.stream);
-            
-            // Initialize speech recognition
-            if ('webkitSpeechRecognition' in window) {
-                const SpeechRecognition = (window as any).webkitSpeechRecognition;
-                this.recognition = new SpeechRecognition();
-                this.recognition.continuous = true;
-                this.recognition.interimResults = true;
-            }
-            
-            return true;
-        } catch (error) {
-            console.error('Error initializing audio recorder:', error);
-            return false;
-        }
-    }
-
-    startRecording(): void {
-        if (!this.mediaRecorder) return;
-        
-        this.audioChunks = [];
-        this.mediaRecorder.ondataavailable = (event) => {
-            this.audioChunks.push(event.data);
-        };
-        this.mediaRecorder.start();
-        
-        if (this.recognition) {
-            this.recognition.start();
-        }
-    }
-
-    stopRecording(): Promise<Blob> {
-        return new Promise((resolve) => {
-            if (!this.mediaRecorder) {
-                resolve(new Blob([]));
-                return;
-            }
-
-            this.mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                resolve(audioBlob);
-            };
-            this.mediaRecorder.stop();
-            
-            if (this.recognition) {
-                this.recognition.stop();
-            }
-        });
-    }
-}
-
-let isRecording = false;
-let isListening = false;
-let audioRecorder: AudioRecorder;
-let transcription = '';
 let notes: Note[] = [];
+let isRecording = false;
+let status = 'idle';
+let transcription = '';
 let microphoneLevel = 0;
-let status: 'idle' | 'recording' | 'processing' = 'idle';
+let audioRecorder: any;
+let recognition: any;
 
-onMount(async () => {
-    audioRecorder = new AudioRecorder();
-    const initialized = await audioRecorder.initialize();
-    if (initialized) {
-        isListening = true;
+// Load notes from localStorage on mount
+onMount(() => {
+    const savedNotes = localStorage.getItem('voice-notes');
+    if (savedNotes) {
+        notes = JSON.parse(savedNotes);
     }
+    initializeRecorder();
 });
 
-async function toggleRecording(): Promise<void> {
+async function saveToNotion(note: Note) {
+    try {
+        // First get AI analysis
+        const analysisResponse = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                transcription: note.transcription
+            })
+        });
+        
+        if (!analysisResponse.ok) {
+            throw new Error('Failed to analyze note');
+        }
+        
+        const analysis = await analysisResponse.json();
+        
+        const response = await fetch('/api/notion', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                timestamp: note.timestamp,
+                transcription: note.transcription,
+                localStorageKey: note.id,
+                ...analysis // Include AI analysis results
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to save to Notion');
+        
+        const { notionId } = await response.json();
+        return notionId;
+    } catch (error) {
+        console.error('Error saving to Notion:', error);
+        throw error;
+    }
+}
+
+// Modified save note function
+async function saveNote(audioBlob: Blob, transcription: string) {
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    
+    reader.onloadend = async () => {
+        const base64Audio = reader.result as string;
+        const noteId = crypto.randomUUID();
+        
+        const newNote: Note = {
+            id: noteId,
+            timestamp: new Date().toISOString(),
+            audio: base64Audio,
+            transcription: transcription || 'Processing...'
+        };
+        
+        try {
+            // Save to Notion first
+            const notionId = await saveToNotion(newNote);
+            newNote.notionId = notionId;
+            
+            // Then save everything to localStorage
+            notes = [...notes, newNote];
+            localStorage.setItem('voice-notes', JSON.stringify(notes));
+        } catch (error) {
+            console.error('Error saving note:', error);
+            // Still save to localStorage even if Notion fails
+            notes = [...notes, newNote];
+            localStorage.setItem('voice-notes', JSON.stringify(notes));
+        }
+    };
+}
+
+// Initialize recorder and speech recognition
+async function initializeRecorder() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioRecorder = new MediaRecorder(stream);
+        const audioChunks: BlobPart[] = [];
+
+        // Initialize speech recognition
+        if ('webkitSpeechRecognition' in window) {
+            const SpeechRecognition = (window as any).webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            recognition.onresult = (event: any) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                transcription = finalTranscript || interimTranscript;
+            };
+        }
+
+        audioRecorder.ondataavailable = (event: BlobEvent) => {
+            audioChunks.push(event.data);
+        };
+
+        audioRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioChunks.length = 0; // Clear the chunks
+            await saveNote(audioBlob, transcription);
+        };
+
+        // Set up audio visualization
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyzer = audioContext.createAnalyser();
+        analyzer.fftSize = 256;
+        source.connect(analyzer);
+
+        function updateMicrophoneLevel() {
+            if (isRecording) {
+                const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+                analyzer.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                microphoneLevel = average / 128; // Normalize to 0-1
+                requestAnimationFrame(updateMicrophoneLevel);
+            }
+        }
+
+        audioRecorder.startRecording = () => {
+            audioChunks.length = 0;
+            audioRecorder.start();
+            if (recognition) {
+                recognition.start();
+            }
+            updateMicrophoneLevel();
+        };
+
+        audioRecorder.stopRecording = () => {
+            return new Promise<Blob>((resolve) => {
+                if (recognition) {
+                    recognition.stop();
+                }
+                audioRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks.length = 0;
+                    resolve(audioBlob);
+                };
+                audioRecorder.stop();
+            });
+        };
+
+    } catch (error) {
+        console.error('Error initializing recorder:', error);
+        status = 'error';
+    }
+}
+
+async function toggleRecording() {
     if (!isRecording) {
         isRecording = true;
         status = 'recording';
@@ -106,12 +201,7 @@ async function toggleRecording(): Promise<void> {
         isRecording = false;
         status = 'processing';
         const audioBlob = await audioRecorder.stopRecording();
-        const timestamp = new Date().toLocaleTimeString();
-        notes = [...notes, { 
-            timestamp, 
-            audio: URL.createObjectURL(audioBlob),
-            transcription: transcription || 'Processing...'
-        }];
+        await saveNote(audioBlob, transcription);
         transcription = '';
         status = 'idle';
     }
