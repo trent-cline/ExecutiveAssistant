@@ -21,38 +21,51 @@ export const POST = (async ({ request }) => {
             });
         }
 
-        console.log('Audio file received, size:', audioFile.size, 'type:', audioFile.type);
+        console.log('Audio file received:', {
+            size: audioFile.size,
+            type: audioFile.type,
+            name: audioFile.name
+        });
 
         // Convert File to ArrayBuffer
         const buffer = await audioFile.arrayBuffer();
         console.log('Audio buffer created, size:', buffer.byteLength);
 
-        // Upload the audio file to AssemblyAI
-        console.log('Uploading to AssemblyAI...');
-        const uploadResponse = await client.files.upload(buffer, {
-            contentType: audioFile.type
-        });
-        console.log('Upload successful, URL:', uploadResponse.url);
+        try {
+            // Upload the audio file to AssemblyAI
+            console.log('Uploading to AssemblyAI...');
+            const uploadResponse = await client.files.upload(buffer, {
+                contentType: audioFile.type || 'audio/webm'
+            });
+            console.log('Upload successful, URL:', uploadResponse.url);
 
-        // Start transcription
-        console.log('Starting transcription...');
-        const config = {
-            audio_url: uploadResponse.url,
-            language_code: 'en',
-        };
+            // Start transcription
+            console.log('Starting transcription...');
+            const config = {
+                audio_url: uploadResponse.url,
+                language_code: 'en',
+            };
 
-        const transcript = await client.transcripts.transcribe(config);
-        console.log('Transcription complete:', transcript.status);
+            const transcript = await client.transcripts.transcribe(config);
+            console.log('Transcription complete:', transcript.status);
 
-        if (transcript.status === 'error') {
-            throw new Error(transcript.error || 'Transcription failed');
+            if (transcript.status === 'error') {
+                throw new Error(transcript.error || 'Transcription failed');
+            }
+
+            return json({
+                text: transcript.text || '',
+                confidence: transcript.confidence,
+                status: transcript.status
+            });
+        } catch (uploadError: any) {
+            console.error('AssemblyAI API error:', {
+                message: uploadError.message,
+                response: uploadError.response?.data,
+                status: uploadError.response?.status
+            });
+            throw uploadError;
         }
-
-        return json({
-            text: transcript.text,
-            confidence: transcript.confidence,
-            status: transcript.status
-        });
     } catch (error: any) {
         console.error('AssemblyAI transcription error:', {
             message: error.message,

@@ -126,11 +126,18 @@
                     autoGainControl: true
                 }
             });
+
+            // Get supported MIME types
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+                ? 'audio/webm;codecs=opus'
+                : 'audio/webm';
+
+            console.log('Using MIME type:', mimeType);
             
-            // Configure MediaRecorder for WAV format
             audioRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/wav'
+                mimeType: mimeType
             });
+            
             const audioChunks: BlobPart[] = [];
 
             // Only initialize browser speech recognition for desktop
@@ -185,9 +192,8 @@
             };
 
             audioRecorder.onstop = async () => {
-                // Convert audio to WAV format for better compatibility
                 const audioBlob = new Blob(audioChunks, { 
-                    type: 'audio/wav'  
+                    type: audioRecorder.mimeType 
                 });
                 audioChunks.length = 0;
                 
