@@ -127,7 +127,10 @@
                 }
             });
             
-            audioRecorder = new MediaRecorder(stream);
+            // Configure MediaRecorder for WAV format
+            audioRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/wav'
+            });
             const audioChunks: BlobPart[] = [];
 
             // Only initialize browser speech recognition for desktop
@@ -182,11 +185,15 @@
             };
 
             audioRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                audioChunks.length = 0; // Clear chunks after creating blob
+                // Convert audio to WAV format for better compatibility
+                const audioBlob = new Blob(audioChunks, { 
+                    type: 'audio/wav'  
+                });
+                audioChunks.length = 0;
                 
                 if (isMobile) {
                     status = 'Processing audio...';
+                    console.log('Audio blob size:', audioBlob.size, 'type:', audioBlob.type);
                 }
                 
                 await saveNote(audioBlob, transcription);
