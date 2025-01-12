@@ -39,21 +39,41 @@
         const noteId = crypto.randomUUID();
         const timestamp = new Date().toISOString();
         
-        const newNote: Note = {
-            id: noteId,
-            timestamp,
-            transcription,
-            localStorageKey: noteId
-        };
-
         try {
+            let finalTranscription = transcription;
+            
+            // Use AssemblyAI for mobile devices
+            if (isMobile) {
+                const formData = new FormData();
+                formData.append('audio', audioBlob);
+                
+                const transcribeResponse = await fetch('/api/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!transcribeResponse.ok) {
+                    throw new Error('Failed to transcribe audio');
+                }
+                
+                const transcribeResult = await transcribeResponse.json();
+                finalTranscription = transcribeResult.text;
+            }
+
+            const newNote: Note = {
+                id: noteId,
+                timestamp,
+                transcription: finalTranscription,
+                localStorageKey: noteId
+            };
+
             // Analyze the transcription
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ transcription })
+                body: JSON.stringify({ transcription: finalTranscription })
             });
 
             if (!response.ok) {
@@ -85,7 +105,13 @@
             console.error('Error saving note:', error);
             status = error instanceof Error ? error.message : 'Error saving note';
             // Still save locally even if remote save fails
-            notes = [newNote, ...notes];
+            const fallbackNote = {
+                id: noteId,
+                timestamp,
+                transcription: transcription,
+                localStorageKey: noteId
+            };
+            notes = [fallbackNote, ...notes];
             localStorage.setItem('voice-notes', JSON.stringify(notes));
         }
     }
@@ -104,26 +130,20 @@
             audioRecorder = new MediaRecorder(stream);
             const audioChunks: BlobPart[] = [];
 
-            // Initialize speech recognition with mobile-first approach
-            const SpeechRecognition = (window as any).SpeechRecognition || 
-                                    (window as any).webkitSpeechRecognition;
-                                    
-            if (SpeechRecognition) {
-                recognition = new SpeechRecognition();
-                recognition.continuous = !isMobile; // false on mobile, true on desktop
-                recognition.interimResults = !isMobile; // false on mobile, true on desktop
-                recognition.lang = 'en-US';
-                
-                recognition.onresult = (event: any) => {
-                    if (isMobile) {
-                        // Mobile: accumulate final results
-                        const transcript = event.results[0][0].transcript;
-                        currentTranscript += transcript + ' ';
-                        transcription = currentTranscript.trim();
-                    } else {
-                        // Desktop: show interim and final results
+            // Only initialize browser speech recognition for desktop
+            if (!isMobile) {
+                const SpeechRecognition = (window as any).SpeechRecognition || 
+                                        (window as any).webkitSpeechRecognition;
+                                        
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.lang = 'en-US';
+                    
+                    recognition.onresult = (event: any) => {
                         let interimTranscript = '';
-                        let finalTranscript = '';
+                        let finalTranscript = currentTranscript;
 
                         for (let i = event.resultIndex; i < event.results.length; i++) {
                             const transcript = event.results[i][0].transcript;
@@ -136,34 +156,25 @@
 
                         currentTranscript = finalTranscript;
                         transcription = (finalTranscript + interimTranscript).trim();
-                    }
-                    console.log('Got transcription:', transcription);
-                };
+                        console.log('Got transcription:', transcription);
+                    };
 
-                recognition.onerror = (event: any) => {
-                    console.error('Speech recognition error:', event.error);
-                    if (event.error === 'no-speech') {
-                        status = 'No speech detected';
-                    }
-                };
+                    recognition.onerror = (event: any) => {
+                        console.error('Speech recognition error:', event.error);
+                        status = `Error: ${event.error}`;
+                    };
 
-                recognition.onend = () => {
-                    console.log('Recognition ended, current transcript:', transcription);
-                    if (isRecording) {
-                        // Wait a bit before restarting on mobile
-                        setTimeout(() => {
+                    recognition.onend = () => {
+                        if (isRecording) {
                             try {
                                 recognition.start();
                                 console.log('Restarted recognition');
                             } catch (error) {
                                 console.error('Failed to restart recognition:', error);
                             }
-                        }, isMobile ? 100 : 10); // Longer delay on mobile
-                    }
-                };
-            } else {
-                console.warn('Speech recognition not available');
-                status = 'Speech recognition not supported';
+                        }
+                    };
+                }
             }
 
             audioRecorder.ondataavailable = (event: BlobEvent) => {
@@ -173,6 +184,11 @@
             audioRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 audioChunks.length = 0; // Clear chunks after creating blob
+                
+                if (isMobile) {
+                    status = 'Processing audio...';
+                }
+                
                 await saveNote(audioBlob, transcription);
             };
 
@@ -180,9 +196,12 @@
                 audioChunks.length = 0;
                 transcription = '';
                 currentTranscript = '';
-                status = 'Recording...';
-                audioRecorder.start();
-                if (recognition) {
+                status = isMobile ? 'Recording...' : 'Listening...';
+                
+                // For mobile, record in larger chunks since we'll process afterward
+                audioRecorder.start(isMobile ? 1000 : 250);
+                
+                if (!isMobile && recognition) {
                     try {
                         recognition.start();
                         console.log('Started recognition');
