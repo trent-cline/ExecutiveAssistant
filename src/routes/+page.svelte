@@ -215,6 +215,18 @@
         }
     }
 
+    // Delete note
+    async function deleteNote(note: Note) {
+        if (confirm('Are you sure you want to delete this note?')) {
+            // Remove from local storage
+            localStorage.removeItem(note.localStorageKey);
+            
+            // Update notes array
+            notes = notes.filter(n => n.localStorageKey !== note.localStorageKey);
+            localStorage.setItem('voice-notes', JSON.stringify(notes));
+        }
+    }
+
     onDestroy(() => {
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
@@ -228,60 +240,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </svelte:head>
 
-<main>
-    <div class="container">
-        <h1>Personal Assistant</h1>
-        
-        <div class="record-section">
-            <button 
-                class="record-button {isRecording ? 'recording' : ''}" 
-                on:click={toggleRecording}
-                style="opacity: {isRecording ? 0.5 + microphoneLevel/2 : 1}"
-            >
-                {#if isRecording}
-                    ⏹️
-                {:else}
-                    🎤
-                {/if}
-            </button>
-            
-            {#if status}
-                <div class="status">{status}</div>
-            {/if}
-            
-            {#if transcription}
-                <div class="transcription">{transcription}</div>
-            {/if}
-        </div>
-
-        <div class="notes-list">
-            {#each notes as note}
-                <div class="note">
-                    <div><strong>Time:</strong> {new Date(note.timestamp).toLocaleString()}</div>
-                    <div><strong>Category:</strong> {note.category || 'N/A'}</div>
-                    <div><strong>Priority:</strong> {note.priority || 'N/A'}</div>
-                    {#if note.dueDate}
-                        <div><strong>Due:</strong> {new Date(note.dueDate).toLocaleDateString()}</div>
-                    {/if}
-                    <div><strong>Summary:</strong> {note.summary || note.transcription}</div>
-                </div>
-            {/each}
-        </div>
-    </div>
-</main>
-
 <style>
     :global(body) {
+        background-color: white;
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
-        background: #1a1a1a;
-        color: #ffffff;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
     }
 
     .container {
         max-width: 800px;
         margin: 0 auto;
         padding: 20px;
+    }
+
+    .controls-section {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        text-align: center;
     }
 
     .record-button {
@@ -314,23 +293,69 @@
     .status {
         margin-top: 10px;
         color: #666;
+        font-size: 14px;
     }
 
     .notes-list {
-        margin-top: 20px;
+        display: grid;
+        gap: 20px;
+        grid-template-columns: 1fr;
     }
 
     .note {
-        background-color: #f9f9f9;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 15px;
-        margin-bottom: 10px;
+        background-color: #F0F8FF; /* Light Steel Blue */
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .note:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .note-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .note-metadata {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .metadata-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .metadata-label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+
+    .metadata-value {
+        font-size: 14px;
+        color: #333;
     }
 
     .transcription {
         margin-top: 10px;
         white-space: pre-wrap;
+        color: #333;
+        line-height: 1.5;
+        font-size: 16px;
+        padding: 10px;
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 4px;
     }
 
     .microphone-level {
@@ -339,7 +364,7 @@
         background-color: #ddd;
         border-radius: 10px;
         overflow: hidden;
-        margin: 10px 0;
+        margin: 10px auto;
     }
 
     .level-bar {
@@ -347,4 +372,103 @@
         background-color: #4CAF50;
         transition: width 0.1s ease;
     }
+
+    .delete-button {
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 8px;
+        line-height: 1;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        touch-action: manipulation;
+    }
+
+    .delete-button:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        color: #f44336;
+    }
+
+    @media (hover: none) {
+        .delete-button {
+            opacity: 1;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .notes-list {
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        }
+    }
 </style>
+
+<div class="container">
+    <div class="controls-section">
+        <h1>Voice Notes</h1>
+        <button 
+            class="record-button" 
+            class:recording={isRecording} 
+            on:click={toggleRecording}
+        >
+            {isRecording ? 'Stop Recording' : 'Start Recording'}
+        </button>
+        
+        {#if isRecording}
+            <div class="microphone-level">
+                <div class="level-bar" style="width: {microphoneLevel * 100}%"></div>
+            </div>
+        {/if}
+        
+        {#if status}
+            <div class="status">{status}</div>
+        {/if}
+    </div>
+
+    <div class="notes-list">
+        {#each notes as note}
+            <div class="note">
+                <div class="note-header">
+                    <div class="metadata-item">
+                        <span class="metadata-label">Time</span>
+                        <span class="metadata-value">{new Date(note.timestamp).toLocaleString()}</span>
+                    </div>
+                    <button 
+                        class="delete-button"
+                        on:click={() => deleteNote(note)}
+                        aria-label="Delete note"
+                    >
+                        ×
+                    </button>
+                </div>
+                
+                <div class="note-metadata">
+                    <div class="metadata-item">
+                        <span class="metadata-label">Category</span>
+                        <span class="metadata-value">{note.category || 'N/A'}</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">Priority</span>
+                        <span class="metadata-value">{note.priority || 'N/A'}</span>
+                    </div>
+                    {#if note.dueDate}
+                        <div class="metadata-item">
+                            <span class="metadata-label">Due Date</span>
+                            <span class="metadata-value">{new Date(note.dueDate).toLocaleDateString()}</span>
+                        </div>
+                    {/if}
+                </div>
+                
+                <div class="transcription">
+                    {note.transcription}
+                </div>
+            </div>
+        {/each}
+    </div>
+</div>
