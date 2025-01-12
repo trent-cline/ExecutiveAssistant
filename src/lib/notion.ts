@@ -5,25 +5,17 @@ const notion = new Client({
     auth: env.NOTION_API_KEY
 });
 
-interface NotionNote {
+export interface NotionNote {
     timestamp: string;
     transcription: string;
     localStorageKey: string;
-    category?: string;
-    priority?: 'low' | 'medium' | 'high';
-    dueDate?: string;
-    summary?: string;
-}
-
-export interface AddNoteToNotionNote {
     category: string;
     priority: 'low' | 'medium' | 'high';
     dueDate?: string;
     summary: string;
-    transcription: string;
 }
 
-export async function addNoteToNotion(note: AddNoteToNotionNote) {
+export async function addNoteToNotion(note: NotionNote) {
     try {
         // Validate required fields
         if (!note.category || !note.priority || !note.summary || !note.transcription) {
@@ -44,7 +36,7 @@ export async function addNoteToNotion(note: AddNoteToNotionNote) {
                 Name: {
                     title: [{
                         text: {
-                            content: note.summary.slice(0, 100) // Use first 100 chars of summary as title
+                            content: note.summary.slice(0, 100)
                         }
                     }]
                 },
@@ -81,6 +73,20 @@ export async function addNoteToNotion(note: AddNoteToNotionNote) {
                             content: note.transcription
                         }
                     }]
+                },
+                Timestamp: {
+                    type: 'date',
+                    date: {
+                        start: note.timestamp
+                    }
+                },
+                LocalStorageKey: {
+                    type: 'rich_text',
+                    rich_text: [{
+                        text: {
+                            content: note.localStorageKey
+                        }
+                    }]
                 }
             }
         });
@@ -88,11 +94,10 @@ export async function addNoteToNotion(note: AddNoteToNotionNote) {
         console.log('Successfully created Notion page:', response.id);
         return response.id;
     } catch (error: any) {
-        console.error('Detailed Notion API error:', {
-            error: error.message,
+        console.error('@notionhq/client error:', {
             code: error.code,
-            status: error.status,
-            details: error.body
+            message: error.message,
+            body: error.body
         });
         throw error;
     }

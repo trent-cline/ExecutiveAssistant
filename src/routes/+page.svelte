@@ -1,247 +1,251 @@
 <script lang="ts">
-import { onMount } from 'svelte';
+    import { onMount } from 'svelte';
 
-interface Note {
-    id: string;
-    timestamp: string;
-    audio: string;
-    transcription: string;
-    notionId?: string;
-    category?: string;
-    priority?: 'low' | 'medium' | 'high';
-    dueDate?: string;
-    summary?: string;
-}
-
-let notes: Note[] = [];
-let audioRecorder: any;
-let recognition: any;
-let isRecording = false;
-let transcription = '';
-let currentTranscript = ''; // Add this declaration
-let status = '';
-let microphoneLevel = 0;
-
-// Load notes from localStorage on mount
-onMount(() => {
-    const savedNotes = localStorage.getItem('voice-notes');
-    if (savedNotes) {
-        notes = JSON.parse(savedNotes);
+    interface Note {
+        id: string;
+        timestamp: string;
+        transcription: string;
+        localStorageKey: string;
+        category?: string;
+        priority?: 'low' | 'medium' | 'high';
+        dueDate?: string;
+        summary?: string;
     }
-    initializeRecorder();
-});
 
-async function saveToNotion(note: Note) {
-    try {
-        // First get AI analysis
-        const analysisResponse = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                transcription: note.transcription
-            })
-        });
-        
-        if (!analysisResponse.ok) {
-            throw new Error('Failed to analyze note');
+    let notes: Note[] = [];
+    let audioRecorder: any;
+    let recognition: any;
+    let isRecording = false;
+    let transcription = '';
+    let currentTranscript = '';
+    let status = '';
+    let microphoneLevel = 0;
+    let isMobile = false;
+
+    // Load notes from localStorage on mount
+    onMount(() => {
+        // Detect mobile device
+        isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        console.log('Device type:', isMobile ? 'mobile' : 'desktop');
+
+        const savedNotes = localStorage.getItem('voice-notes');
+        if (savedNotes) {
+            notes = JSON.parse(savedNotes);
         }
-        
-        const analysis = await analysisResponse.json();
-        
-        const response = await fetch('/api/notion', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                timestamp: note.timestamp,
-                transcription: note.transcription,
-                localStorageKey: note.id,
-                ...analysis // Include AI analysis results
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to save to Notion');
-        
-        const { notionId } = await response.json();
-        return notionId;
-    } catch (error) {
-        console.error('Error saving to Notion:', error);
-        throw error;
-    }
-}
+        initializeRecorder();
+    });
 
-// Modified save note function
-async function saveNote(audioBlob: Blob, transcription: string) {
-    const reader = new FileReader();
-    reader.readAsDataURL(audioBlob);
-    
-    reader.onloadend = async () => {
-        const base64Audio = reader.result as string;
+    async function saveNote(audioBlob: Blob, transcription: string) {
         const noteId = crypto.randomUUID();
+        const timestamp = new Date().toISOString();
         
         const newNote: Note = {
             id: noteId,
-            timestamp: new Date().toISOString(),
-            audio: base64Audio,
-            transcription: transcription || 'Processing...'
+            timestamp,
+            transcription,
+            localStorageKey: noteId
         };
-        
+
         try {
-            // Save to Notion and get analysis
-            const notionId = await saveToNotion(newNote);
-            
-            // Update the note with the analysis results
-            const updatedNote = {
-                ...newNote,
-                notionId,
-                transcription: transcription // Replace 'Processing...' with actual transcription
-            };
-            
+            // Analyze the transcription
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ transcription })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to analyze note');
+            }
+
+            const analysis = await response.json();
+            const updatedNote = { ...newNote, ...analysis };
+
+            // Save to Notion
+            const notionResponse = await fetch('/api/notion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedNote)
+            });
+
+            if (!notionResponse.ok) {
+                const error = await notionResponse.json();
+                throw new Error(error.error || 'Failed to save to Notion');
+            }
+
             // Update the notes array with the completed note
-            notes = notes.map(n => n.id === noteId ? updatedNote : n);
+            notes = [updatedNote, ...notes];
             localStorage.setItem('voice-notes', JSON.stringify(notes));
+            status = 'Note saved successfully';
         } catch (error) {
             console.error('Error saving note:', error);
-            // Still save to localStorage even if Notion fails
-            notes = [...notes, newNote];
+            status = error instanceof Error ? error.message : 'Error saving note';
+            // Still save locally even if remote save fails
+            notes = [newNote, ...notes];
             localStorage.setItem('voice-notes', JSON.stringify(notes));
         }
-    };
-}
+    }
 
-// Initialize recorder and speech recognition
-async function initializeRecorder() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioRecorder = new MediaRecorder(stream);
-        const audioChunks: BlobPart[] = [];
-
-        // Initialize speech recognition with better mobile support
-        const SpeechRecognition = (window as any).SpeechRecognition || 
-                                (window as any).webkitSpeechRecognition;
-                                
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            // Change these settings for better mobile support
-            recognition.continuous = false; // Changed to false for mobile
-            recognition.interimResults = false; // Changed to false for mobile
-            recognition.lang = 'en-US'; // Explicitly set language
-            
-            let currentTranscript = ''; // Keep track of accumulated transcript
-            
-            recognition.onresult = (event: any) => {
-                const transcript = event.results[0][0].transcript;
-                currentTranscript += transcript + ' ';
-                transcription = currentTranscript.trim();
-                console.log('Got transcription:', transcription);
-            };
-
-            recognition.onerror = (event: any) => {
-                console.error('Speech recognition error:', event.error);
-                if (event.error === 'no-speech') {
-                    status = 'No speech detected';
+    // Initialize recorder and speech recognition
+    async function initializeRecorder() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
                 }
-            };
-
-            recognition.onend = () => {
-                console.log('Recognition ended, current transcript:', transcription);
-                if (isRecording) {
-                    // Wait a bit before restarting
-                    setTimeout(() => {
-                        try {
-                            recognition.start();
-                            console.log('Restarted recognition');
-                        } catch (error) {
-                            console.error('Failed to restart recognition:', error);
-                        }
-                    }, 100);
-                }
-            };
-        } else {
-            console.warn('Speech recognition not available');
-            status = 'Speech recognition not supported';
-        }
-
-        audioRecorder.ondataavailable = (event: BlobEvent) => {
-            audioChunks.push(event.data);
-        };
-
-        audioRecorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            audioChunks.length = 0; // Clear chunks after creating blob
-            await saveNote(audioBlob, transcription);
-        };
-
-        audioRecorder.startRecording = () => {
-            audioChunks.length = 0; // Clear any previous chunks
-            transcription = ''; // Reset transcription
-            currentTranscript = ''; // Reset accumulated transcript
-            audioRecorder.start();
-            if (recognition) {
-                try {
-                    recognition.start();
-                    console.log('Started recognition');
-                } catch (error) {
-                    console.error('Failed to start recognition:', error);
-                }
-            }
-            updateMicrophoneLevel();
-        };
-
-        audioRecorder.stopRecording = () => {
-            return new Promise<Blob>((resolve) => {
-                if (recognition) {
-                    recognition.stop();
-                }
-                audioRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    audioChunks.length = 0; // Clear chunks after creating blob
-                    resolve(audioBlob);
-                };
-                audioRecorder.stop();
             });
-        };
+            
+            audioRecorder = new MediaRecorder(stream);
+            const audioChunks: BlobPart[] = [];
 
-        // Set up audio visualization
-        const audioContext = new AudioContext();
-        const source = audioContext.createMediaStreamSource(stream);
-        const analyzer = audioContext.createAnalyser();
-        analyzer.fftSize = 256;
-        source.connect(analyzer);
+            // Initialize speech recognition with mobile-first approach
+            const SpeechRecognition = (window as any).SpeechRecognition || 
+                                    (window as any).webkitSpeechRecognition;
+                                    
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = !isMobile; // false on mobile, true on desktop
+                recognition.interimResults = !isMobile; // false on mobile, true on desktop
+                recognition.lang = 'en-US';
+                
+                recognition.onresult = (event: any) => {
+                    if (isMobile) {
+                        // Mobile: accumulate final results
+                        const transcript = event.results[0][0].transcript;
+                        currentTranscript += transcript + ' ';
+                        transcription = currentTranscript.trim();
+                    } else {
+                        // Desktop: show interim and final results
+                        let interimTranscript = '';
+                        let finalTranscript = '';
 
-        function updateMicrophoneLevel() {
-            if (isRecording) {
-                const dataArray = new Uint8Array(analyzer.frequencyBinCount);
-                analyzer.getByteFrequencyData(dataArray);
-                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-                microphoneLevel = average / 128; // Normalize to 0-1
-                requestAnimationFrame(updateMicrophoneLevel);
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            const transcript = event.results[i][0].transcript;
+                            if (event.results[i].isFinal) {
+                                finalTranscript += transcript + ' ';
+                            } else {
+                                interimTranscript += transcript;
+                            }
+                        }
+
+                        currentTranscript = finalTranscript;
+                        transcription = (finalTranscript + interimTranscript).trim();
+                    }
+                    console.log('Got transcription:', transcription);
+                };
+
+                recognition.onerror = (event: any) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error === 'no-speech') {
+                        status = 'No speech detected';
+                    }
+                };
+
+                recognition.onend = () => {
+                    console.log('Recognition ended, current transcript:', transcription);
+                    if (isRecording) {
+                        // Wait a bit before restarting on mobile
+                        setTimeout(() => {
+                            try {
+                                recognition.start();
+                                console.log('Restarted recognition');
+                            } catch (error) {
+                                console.error('Failed to restart recognition:', error);
+                            }
+                        }, isMobile ? 100 : 10); // Longer delay on mobile
+                    }
+                };
+            } else {
+                console.warn('Speech recognition not available');
+                status = 'Speech recognition not supported';
             }
+
+            audioRecorder.ondataavailable = (event: BlobEvent) => {
+                audioChunks.push(event.data);
+            };
+
+            audioRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                audioChunks.length = 0; // Clear chunks after creating blob
+                await saveNote(audioBlob, transcription);
+            };
+
+            audioRecorder.startRecording = () => {
+                audioChunks.length = 0;
+                transcription = '';
+                currentTranscript = '';
+                status = 'Recording...';
+                audioRecorder.start();
+                if (recognition) {
+                    try {
+                        recognition.start();
+                        console.log('Started recognition');
+                    } catch (error) {
+                        console.error('Failed to start recognition:', error);
+                    }
+                }
+                updateMicrophoneLevel();
+            };
+
+            // Set up audio visualization
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyzer = audioContext.createAnalyser();
+            analyzer.fftSize = 256;
+            source.connect(analyzer);
+
+            function updateMicrophoneLevel() {
+                if (isRecording) {
+                    const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+                    analyzer.getByteFrequencyData(dataArray);
+                    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                    microphoneLevel = average / 128; // Normalize to 0-1
+                    requestAnimationFrame(updateMicrophoneLevel);
+                }
+            }
+
+        } catch (error) {
+            console.error('Error initializing recorder:', error);
+            status = 'error';
         }
-
-    } catch (error) {
-        console.error('Error initializing recorder:', error);
-        status = 'error';
     }
-}
 
-async function toggleRecording() {
-    if (!isRecording) {
-        isRecording = true;
-        status = 'recording';
-        audioRecorder.startRecording();
-    } else {
-        isRecording = false;
-        status = 'processing';
-        const audioBlob = await audioRecorder.stopRecording();
-        await saveNote(audioBlob, transcription);
-        transcription = '';
-        status = 'idle';
+    async function toggleRecording() {
+        if (!isRecording) {
+            isRecording = true;
+            status = 'Recording...';
+            audioRecorder.startRecording();
+        } else {
+            if (recognition) {
+                recognition.stop();
+            }
+            audioRecorder.stop();
+            isRecording = false;
+            status = 'Processing...';
+        }
     }
-}
+
+    function updateMicrophoneLevel() {
+        if (isRecording) {
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyzer = audioContext.createAnalyser();
+            analyzer.fftSize = 256;
+            source.connect(analyzer);
+
+            const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+            analyzer.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            microphoneLevel = average / 128; // Normalize to 0-1
+            requestAnimationFrame(updateMicrophoneLevel);
+        }
+    }
 </script>
 
 <svelte:head>
@@ -256,33 +260,36 @@ async function toggleRecording() {
         
         <div class="record-section">
             <button 
-                class="record-button {isRecording ? 'recording' : ''}"
+                class="record-button {isRecording ? 'recording' : ''}" 
                 on:click={toggleRecording}
-                style="--level: {microphoneLevel}"
+                style="opacity: {isRecording ? 0.5 + microphoneLevel/2 : 1}"
             >
-                <div class="mic-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                </div>
                 {#if isRecording}
-                    <span class="pulse"></span>
+                    ⏹️
+                {:else}
+                    🎤
                 {/if}
             </button>
-            <p class="status">{status}</p>
+            
+            {#if status}
+                <div class="status">{status}</div>
+            {/if}
+            
+            {#if transcription}
+                <div class="transcription">{transcription}</div>
+            {/if}
         </div>
 
-        <div class="notes-section">
+        <div class="notes-list">
             {#each notes as note}
-                <div class="note-card">
-                    <div class="note-header">
-                        <span class="timestamp">{note.timestamp}</span>
-                        <audio controls src={note.audio}></audio>
-                    </div>
-                    <p class="transcription">{note.transcription}</p>
+                <div class="note-item">
+                    <div><strong>Time:</strong> {new Date(note.timestamp).toLocaleString()}</div>
+                    <div><strong>Category:</strong> {note.category || 'N/A'}</div>
+                    <div><strong>Priority:</strong> {note.priority || 'N/A'}</div>
+                    {#if note.dueDate}
+                        <div><strong>Due:</strong> {new Date(note.dueDate).toLocaleDateString()}</div>
+                    {/if}
+                    <div><strong>Summary:</strong> {note.summary || note.transcription}</div>
                 </div>
             {/each}
         </div>
