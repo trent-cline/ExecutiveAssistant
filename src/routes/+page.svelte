@@ -14,12 +14,13 @@ interface Note {
 }
 
 let notes: Note[] = [];
-let isRecording = false;
-let status = 'idle';
-let transcription = '';
-let microphoneLevel = 0;
 let audioRecorder: any;
 let recognition: any;
+let isRecording = false;
+let transcription = '';
+let currentTranscript = ''; // Add this declaration
+let status = '';
+let microphoneLevel = 0;
 
 // Load notes from localStorage on mount
 onMount(() => {
@@ -120,49 +121,48 @@ async function initializeRecorder() {
 
         // Initialize speech recognition with better mobile support
         const SpeechRecognition = (window as any).SpeechRecognition || 
-                                (window as any).webkitSpeechRecognition || 
-                                (window as any).mozSpeechRecognition || 
-                                (window as any).msSpeechRecognition;
+                                (window as any).webkitSpeechRecognition;
                                 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
+            // Change these settings for better mobile support
+            recognition.continuous = false; // Changed to false for mobile
+            recognition.interimResults = false; // Changed to false for mobile
+            recognition.lang = 'en-US'; // Explicitly set language
+            
+            let currentTranscript = ''; // Keep track of accumulated transcript
             
             recognition.onresult = (event: any) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
-                    }
-                }
-
-                transcription = finalTranscript || interimTranscript;
+                const transcript = event.results[0][0].transcript;
+                currentTranscript += transcript + ' ';
+                transcription = currentTranscript.trim();
+                console.log('Got transcription:', transcription);
             };
 
             recognition.onerror = (event: any) => {
                 console.error('Speech recognition error:', event.error);
                 if (event.error === 'no-speech') {
-                    // Handle no speech detected
                     status = 'No speech detected';
                 }
             };
 
             recognition.onend = () => {
+                console.log('Recognition ended, current transcript:', transcription);
                 if (isRecording) {
-                    // Restart recognition if we're still recording
-                    recognition.start();
+                    // Wait a bit before restarting
+                    setTimeout(() => {
+                        try {
+                            recognition.start();
+                            console.log('Restarted recognition');
+                        } catch (error) {
+                            console.error('Failed to restart recognition:', error);
+                        }
+                    }, 100);
                 }
             };
         } else {
             console.warn('Speech recognition not available');
-            // Set a flag to show a warning to the user
-            status = 'Speech recognition not available';
+            status = 'Speech recognition not supported';
         }
 
         audioRecorder.ondataavailable = (event: BlobEvent) => {
@@ -171,8 +171,38 @@ async function initializeRecorder() {
 
         audioRecorder.onstop = async () => {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            audioChunks.length = 0; // Clear the chunks
+            audioChunks.length = 0; // Clear chunks after creating blob
             await saveNote(audioBlob, transcription);
+        };
+
+        audioRecorder.startRecording = () => {
+            audioChunks.length = 0; // Clear any previous chunks
+            transcription = ''; // Reset transcription
+            currentTranscript = ''; // Reset accumulated transcript
+            audioRecorder.start();
+            if (recognition) {
+                try {
+                    recognition.start();
+                    console.log('Started recognition');
+                } catch (error) {
+                    console.error('Failed to start recognition:', error);
+                }
+            }
+            updateMicrophoneLevel();
+        };
+
+        audioRecorder.stopRecording = () => {
+            return new Promise<Blob>((resolve) => {
+                if (recognition) {
+                    recognition.stop();
+                }
+                audioRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks.length = 0; // Clear chunks after creating blob
+                    resolve(audioBlob);
+                };
+                audioRecorder.stop();
+            });
         };
 
         // Set up audio visualization
@@ -191,29 +221,6 @@ async function initializeRecorder() {
                 requestAnimationFrame(updateMicrophoneLevel);
             }
         }
-
-        audioRecorder.startRecording = () => {
-            audioChunks.length = 0;
-            audioRecorder.start();
-            if (recognition) {
-                recognition.start();
-            }
-            updateMicrophoneLevel();
-        };
-
-        audioRecorder.stopRecording = () => {
-            return new Promise<Blob>((resolve) => {
-                if (recognition) {
-                    recognition.stop();
-                }
-                audioRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    audioChunks.length = 0;
-                    resolve(audioBlob);
-                };
-                audioRecorder.stop();
-            });
-        };
 
     } catch (error) {
         console.error('Error initializing recorder:', error);

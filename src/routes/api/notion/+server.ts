@@ -2,7 +2,7 @@ import { addNoteToNotion } from '$lib/notion';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST = (async ({ request }) => {
     try {
         const note = await request.json();
         console.log('Received request to save note:', JSON.stringify(note, null, 2));
@@ -19,14 +19,8 @@ export const POST: RequestHandler = async ({ request }) => {
             details: error.body || error
         });
         
-        return new Response(JSON.stringify({
-            error: error.message,
-            details: error.body || error
-        }), { 
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json'
-            }
+        return new Response(JSON.stringify({ error: 'Failed to save to Notion' }), {
+            status: 500
         });
     }
-};
+}) satisfies RequestHandler;

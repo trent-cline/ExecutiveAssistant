@@ -14,32 +14,70 @@ export interface AIAnalysis {
     summary: string;
 }
 
-function parseDate(dateStr: string): string | undefined {
+function parseAnalysisContent(content: string): AIAnalysis {
+    const lines = content.split('\n').map(line => line.trim());
+    const analysis: AIAnalysis = {
+        category: 'note', // default value
+        priority: 'low',  // default value
+        summary: '',
+    };
+
     try {
-        // Remove any leading/trailing whitespace
-        dateStr = dateStr.trim();
-        
-        // If it's N/A or empty, return undefined
-        if (!dateStr || dateStr.toLowerCase() === 'n/a') {
-            return undefined;
+        for (const line of lines) {
+            if (line.startsWith('Category:')) {
+                analysis.category = line.replace('Category:', '').trim().toLowerCase();
+            } else if (line.startsWith('Priority:')) {
+                const priority = line.replace('Priority:', '').trim().toLowerCase();
+                if (['low', 'medium', 'high'].includes(priority)) {
+                    analysis.priority = priority as 'low' | 'medium' | 'high';
+                }
+            } else if (line.startsWith('Due Date:')) {
+                const dateStr = line.replace('Due Date:', '').trim();
+                if (dateStr && dateStr !== 'N/A') {
+                    try {
+                        const date = new Date(dateStr);
+                        if (!isNaN(date.getTime())) {
+                            analysis.dueDate = date.toISOString();
+                        }
+                    } catch (error) {
+                        console.warn('Failed to parse date:', dateStr);
+                    }
+                }
+            } else if (line.startsWith('Summary:')) {
+                analysis.summary = line.replace('Summary:', '').trim();
+            }
         }
 
-        // Try parsing with Date.parse
-        const parsed = Date.parse(dateStr);
-        if (!isNaN(parsed)) {
-            return new Date(parsed).toISOString();
+        // Validate required fields
+        if (!analysis.summary) {
+            throw new Error('No summary found in analysis');
         }
 
-        // If we can't parse it, return undefined
-        return undefined;
+        // Ensure category is one of the expected values
+        if (!['task', 'reminder', 'idea', 'note'].includes(analysis.category)) {
+            analysis.category = 'note'; // Default to 'note' if invalid
+        }
+
+        return analysis;
     } catch (error) {
-        console.warn('Failed to parse date:', dateStr, error);
-        return undefined;
+        console.error('Error parsing analysis:', error);
+        throw new Error('Failed to parse analysis content');
     }
 }
 
-async function analyzeNote(transcription: string): Promise<AIAnalysis> {
+export const POST = (async ({ request }) => {
     try {
+        const { transcription } = await request.json();
+        
+        // Check for empty or "Processing..." transcription
+        if (!transcription || transcription === 'Processing...' || transcription.trim().length === 0) {
+            return json({
+                category: 'note',
+                priority: 'low',
+                summary: 'No transcription available'
+            });
+        }
+
         const response = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
@@ -62,53 +100,24 @@ async function analyzeNote(transcription: string): Promise<AIAnalysis> {
             max_tokens: 200
         });
 
-        console.log('OpenAI response:', response.choices[0].message.content);
-        
-        const content = response.choices[0].message.content;
-        const lines = content.split('\n').map(line => line.trim());
-        const analysis: AIAnalysis = {
-            category: 'task', // default values
-            priority: 'medium',
-            summary: ''
-        };
-
-        for (const line of lines) {
-            if (line.toLowerCase().includes('category:')) {
-                analysis.category = line.split(':')[1].trim();
-            } else if (line.toLowerCase().includes('priority:')) {
-                const priority = line.split(':')[1].trim().toLowerCase();
-                analysis.priority = priority as 'low' | 'medium' | 'high';
-            } else if (line.toLowerCase().includes('due date:')) {
-                const dateStr = line.split(':')[1].trim();
-                const parsedDate = parseDate(dateStr);
-                if (parsedDate) {
-                    analysis.dueDate = parsedDate;
-                }
-            } else if (line.toLowerCase().includes('summary:')) {
-                analysis.summary = line.split(':')[1].trim();
-            }
+        const content = response.choices[0]?.message?.content;
+        if (!content) {
+            throw new Error('No content in OpenAI response');
         }
 
-        console.log('Parsed analysis:', analysis);
-        return analysis;
-    } catch (error) {
-        console.error('Error analyzing note with AI:', error);
-        throw error;
-    }
-}
+        console.log('OpenAI response:', content);
 
-export const POST: RequestHandler = async ({ request }) => {
-    try {
-        const { transcription } = await request.json();
-        const analysis = await analyzeNote(transcription);
+        const analysis = parseAnalysisContent(content);
+        console.log('Parsed analysis:', analysis);
+        
         return json(analysis);
     } catch (error) {
-        console.error('Error in AI analysis endpoint:', error);
-        return new Response(JSON.stringify({ error: 'Failed to analyze note' }), { 
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json'
-            }
+        console.error('Error in analyze endpoint:', error);
+        return new Response(JSON.stringify({ 
+            error: 'Failed to analyze note',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+            status: 500
         });
     }
-};
+}) satisfies RequestHandler;
