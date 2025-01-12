@@ -2,7 +2,6 @@ import { AssemblyAI } from 'assemblyai';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { Buffer } from 'buffer';
 
 const client = new AssemblyAI({
     apiKey: env.ASSEMBLY_AI_KEY
@@ -60,27 +59,72 @@ export const POST = (async ({ request }) => {
             const uploadBuffer = Buffer.from(buffer);
             console.log('Upload buffer created, size:', uploadBuffer.length);
             
-            const uploadResponse = await client.files.upload(uploadBuffer, {
-                contentType: audioFile.type || 'audio/webm'
-            });
-            console.log('Upload successful, URL:', uploadResponse.url);
+            const uploadUrl = await fetch('https://api.assemblyai.com/v2/upload', {
+                method: 'POST',
+                headers: {
+                    'authorization': env.ASSEMBLY_AI_KEY,
+                    'content-type': 'application/octet-stream'
+                },
+                body: uploadBuffer
+            }).then(res => res.json()).then(data => data.upload_url);
+
+            if (!uploadUrl) {
+                throw new Error('Failed to get upload URL from AssemblyAI');
+            }
+
+            console.log('Upload successful, URL:', uploadUrl);
 
             // Start transcription
             console.log('Starting transcription...');
-            const transcript = await client.transcripts.create({
-                audio_url: uploadResponse.url,
-                language_code: 'en'
-            });
-            console.log('Transcription started, id:', transcript.id);
+            const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+                method: 'POST',
+                headers: {
+                    'authorization': env.ASSEMBLY_AI_KEY,
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    audio_url: uploadUrl,
+                    language_code: 'en'
+                })
+            }).then(res => res.json());
 
-            // Wait for transcription to complete
-            const completedTranscript = await waitForTranscript(transcript.id);
+            if (!transcriptResponse.id) {
+                throw new Error('Failed to start transcription');
+            }
+
+            console.log('Transcription started, polling for completion...');
+            
+            // Poll for completion
+            let transcript;
+            for (let i = 0; i < 30; i++) {
+                transcript = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptResponse.id}`, {
+                    headers: {
+                        'authorization': env.ASSEMBLY_AI_KEY
+                    }
+                }).then(res => res.json());
+
+                if (transcript.status === 'completed') {
+                    break;
+                }
+
+                if (transcript.status === 'error') {
+                    throw new Error(transcript.error || 'Transcription failed');
+                }
+
+                // Wait 1 second before checking again
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            if (!transcript || transcript.status !== 'completed') {
+                throw new Error('Transcription timed out');
+            }
+
             console.log('Transcription completed successfully');
 
             return json({
-                text: completedTranscript.text || '',
-                confidence: completedTranscript.confidence,
-                status: completedTranscript.status
+                text: transcript.text || '',
+                confidence: transcript.confidence,
+                status: transcript.status
             });
         } catch (uploadError: any) {
             console.error('AssemblyAI API error:', {

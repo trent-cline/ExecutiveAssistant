@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
 
     interface Note {
         id: string;
@@ -13,13 +13,14 @@
     }
 
     let notes: Note[] = [];
-    let audioRecorder: any;
-    let recognition: any;
+    let audioRecorder: MediaRecorder;
+    let audioChunks: BlobPart[] = [];
     let isRecording = false;
+    let status = '';
     let transcription = '';
     let currentTranscript = '';
-    let status = '';
     let microphoneLevel = 0;
+    let animationFrameId: number;
     let isMobile = false;
 
     // Load notes from localStorage on mount
@@ -35,88 +36,7 @@
         initializeRecorder();
     });
 
-    async function saveNote(audioBlob: Blob, transcription: string) {
-        const noteId = crypto.randomUUID();
-        const timestamp = new Date().toISOString();
-        
-        try {
-            let finalTranscription = transcription;
-            
-            // Use AssemblyAI for mobile devices
-            if (isMobile) {
-                const formData = new FormData();
-                formData.append('audio', audioBlob);
-                
-                const transcribeResponse = await fetch('/api/transcribe', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!transcribeResponse.ok) {
-                    throw new Error('Failed to transcribe audio');
-                }
-                
-                const transcribeResult = await transcribeResponse.json();
-                finalTranscription = transcribeResult.text;
-            }
-
-            const newNote: Note = {
-                id: noteId,
-                timestamp,
-                transcription: finalTranscription,
-                localStorageKey: noteId
-            };
-
-            // Analyze the transcription
-            const response = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ transcription: finalTranscription })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to analyze note');
-            }
-
-            const analysis = await response.json();
-            const updatedNote = { ...newNote, ...analysis };
-
-            // Save to Notion
-            const notionResponse = await fetch('/api/notion', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(updatedNote)
-            });
-
-            if (!notionResponse.ok) {
-                const error = await notionResponse.json();
-                throw new Error(error.error || 'Failed to save to Notion');
-            }
-
-            // Update the notes array with the completed note
-            notes = [updatedNote, ...notes];
-            localStorage.setItem('voice-notes', JSON.stringify(notes));
-            status = 'Note saved successfully';
-        } catch (error) {
-            console.error('Error saving note:', error);
-            status = error instanceof Error ? error.message : 'Error saving note';
-            // Still save locally even if remote save fails
-            const fallbackNote = {
-                id: noteId,
-                timestamp,
-                transcription: transcription,
-                localStorageKey: noteId
-            };
-            notes = [fallbackNote, ...notes];
-            localStorage.setItem('voice-notes', JSON.stringify(notes));
-        }
-    }
-
-    // Initialize recorder and speech recognition
+    // Initialize recorder
     async function initializeRecorder() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -137,55 +57,6 @@
             audioRecorder = new MediaRecorder(stream, {
                 mimeType: mimeType
             });
-            
-            const audioChunks: BlobPart[] = [];
-
-            // Only initialize browser speech recognition for desktop
-            if (!isMobile) {
-                const SpeechRecognition = (window as any).SpeechRecognition || 
-                                        (window as any).webkitSpeechRecognition;
-                                        
-                if (SpeechRecognition) {
-                    recognition = new SpeechRecognition();
-                    recognition.continuous = true;
-                    recognition.interimResults = true;
-                    recognition.lang = 'en-US';
-                    
-                    recognition.onresult = (event: any) => {
-                        let interimTranscript = '';
-                        let finalTranscript = currentTranscript;
-
-                        for (let i = event.resultIndex; i < event.results.length; i++) {
-                            const transcript = event.results[i][0].transcript;
-                            if (event.results[i].isFinal) {
-                                finalTranscript += transcript + ' ';
-                            } else {
-                                interimTranscript += transcript;
-                            }
-                        }
-
-                        currentTranscript = finalTranscript;
-                        transcription = (finalTranscript + interimTranscript).trim();
-                        console.log('Got transcription:', transcription);
-                    };
-
-                    recognition.onerror = (event: any) => {
-                        console.error('Speech recognition error:', event.error);
-                        status = `Error: ${event.error}`;
-                    };
-
-                    recognition.onend = () => {
-                        if (isRecording) {
-                            try {
-                                recognition.start();
-                                console.log('Restarted recognition');
-                            } catch (error) {
-                                console.error('Failed to restart recognition:', error);
-                            }
-                        }
-                    };
-                }
-            }
 
             audioRecorder.ondataavailable = (event: BlobEvent) => {
                 audioChunks.push(event.data);
@@ -197,10 +68,8 @@
                 });
                 audioChunks.length = 0;
                 
-                if (isMobile) {
-                    status = 'Processing audio...';
-                    console.log('Audio blob size:', audioBlob.size, 'type:', audioBlob.type);
-                }
+                status = 'Processing audio...';
+                console.log('Audio blob size:', audioBlob.size, 'type:', audioBlob.type);
                 
                 await saveNote(audioBlob, transcription);
             };
@@ -209,75 +78,148 @@
                 audioChunks.length = 0;
                 transcription = '';
                 currentTranscript = '';
-                status = isMobile ? 'Recording...' : 'Listening...';
+                status = 'Recording...';
                 
-                // For mobile, record in larger chunks since we'll process afterward
-                audioRecorder.start(isMobile ? 1000 : 250);
-                
-                if (!isMobile && recognition) {
-                    try {
-                        recognition.start();
-                        console.log('Started recognition');
-                    } catch (error) {
-                        console.error('Failed to start recognition:', error);
-                    }
-                }
+                audioRecorder.start(1000); // Record in 1-second chunks
                 updateMicrophoneLevel();
             };
 
-            // Set up audio visualization
-            const audioContext = new AudioContext();
-            const source = audioContext.createMediaStreamSource(stream);
-            const analyzer = audioContext.createAnalyser();
-            analyzer.fftSize = 256;
-            source.connect(analyzer);
+            audioRecorder.stopRecording = () => {
+                audioRecorder.stop();
+                cancelAnimationFrame(animationFrameId);
+                status = '';
+                microphoneLevel = 0;
+            };
 
-            function updateMicrophoneLevel() {
-                if (isRecording) {
-                    const dataArray = new Uint8Array(analyzer.frequencyBinCount);
-                    analyzer.getByteFrequencyData(dataArray);
-                    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-                    microphoneLevel = average / 128; // Normalize to 0-1
-                    requestAnimationFrame(updateMicrophoneLevel);
-                }
-            }
-
+            console.log('Successfully initialized recorder');
+            return true;
         } catch (error) {
             console.error('Error initializing recorder:', error);
-            status = 'error';
+            status = `Error: ${error.message}`;
+            return false;
         }
     }
 
+    // Handle recording state
     async function toggleRecording() {
-        if (!isRecording) {
-            isRecording = true;
-            status = 'Recording...';
+        if (!audioRecorder && !await initializeRecorder()) {
+            return;
+        }
+
+        isRecording = !isRecording;
+        
+        if (isRecording) {
             audioRecorder.startRecording();
         } else {
-            if (recognition) {
-                recognition.stop();
-            }
-            audioRecorder.stop();
-            isRecording = false;
-            status = 'Processing...';
+            audioRecorder.stopRecording();
         }
     }
 
+    // Update microphone level visualization
     function updateMicrophoneLevel() {
-        if (isRecording) {
-            const audioContext = new AudioContext();
-            const source = audioContext.createMediaStreamSource(stream);
-            const analyzer = audioContext.createAnalyser();
-            analyzer.fftSize = 256;
-            source.connect(analyzer);
+        if (!isRecording) return;
 
-            const dataArray = new Uint8Array(analyzer.frequencyBinCount);
-            analyzer.getByteFrequencyData(dataArray);
-            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-            microphoneLevel = average / 128; // Normalize to 0-1
-            requestAnimationFrame(updateMicrophoneLevel);
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        const microphone = audioContext.createMediaStreamSource(audioRecorder.stream);
+        microphone.connect(analyser);
+        
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        function updateLevel() {
+            if (!isRecording) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const sum = dataArray.reduce((a, b) => a + b);
+            microphoneLevel = sum / dataArray.length / 255;
+            
+            animationFrameId = requestAnimationFrame(updateLevel);
+        }
+        
+        updateLevel();
+    }
+
+    // Save note with transcription
+    async function saveNote(audioBlob: Blob, text: string) {
+        try {
+            const formData = new FormData();
+            formData.append('audio', audioBlob);
+
+            const response = await fetch('/api/transcribe', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to transcribe audio');
+            }
+
+            const data = await response.json();
+            console.log('Transcription result:', data);
+
+            // Create note with transcribed text
+            const timestamp = new Date().toISOString();
+            const localStorageKey = `note_${timestamp}`;
+
+            const note = {
+                timestamp,
+                transcription: data.text,
+                localStorageKey
+            };
+
+            // Analyze the transcription
+            const analysisResponse = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ transcription: data.text })
+            });
+
+            if (!analysisResponse.ok) {
+                throw new Error('Failed to analyze note');
+            }
+
+            const analysis = await analysisResponse.json();
+            const updatedNote = { ...note, ...analysis };
+
+            // Save to local storage
+            localStorage.setItem(localStorageKey, JSON.stringify(updatedNote));
+
+            // Save to Notion
+            const notionResponse = await fetch('/api/notion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedNote)
+            });
+
+            if (!notionResponse.ok) {
+                const error = await notionResponse.json();
+                throw new Error(error.error || 'Failed to save to Notion');
+            }
+
+            // Update the notes array with the completed note
+            notes = [updatedNote, ...notes];
+            localStorage.setItem('voice-notes', JSON.stringify(notes));
+            status = '';
+            transcription = '';
+        } catch (error) {
+            console.error('Error saving note:', error);
+            status = `Error: ${error.message}`;
+            throw error;
         }
     }
+
+    onDestroy(() => {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+    });
 </script>
 
 <svelte:head>
@@ -314,7 +256,7 @@
 
         <div class="notes-list">
             {#each notes as note}
-                <div class="note-item">
+                <div class="note">
                     <div><strong>Time:</strong> {new Date(note.timestamp).toLocaleString()}</div>
                     <div><strong>Category:</strong> {note.category || 'N/A'}</div>
                     <div><strong>Priority:</strong> {note.priority || 'N/A'}</div>
@@ -337,144 +279,72 @@
     }
 
     .container {
-        max-width: 600px;
+        max-width: 800px;
         margin: 0 auto;
-        padding: 2rem 1rem;
-    }
-
-    h1 {
-        text-align: center;
-        font-size: 2rem;
-        margin-bottom: 2rem;
-        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .record-section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 2rem;
+        padding: 20px;
     }
 
     .record-button {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
+        background-color: #4CAF50;
         border: none;
-        background: #2d2d2d;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
         cursor: pointer;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
+        border-radius: 4px;
+        transition: background-color 0.3s;
     }
 
     .record-button:hover {
-        transform: scale(1.05);
+        background-color: #45a049;
     }
 
     .record-button.recording {
-        background: #ff6b6b;
+        background-color: #f44336;
     }
 
-    .mic-icon {
-        width: 40px;
-        height: 40px;
-        color: white;
-    }
-
-    .pulse {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        background: rgba(255, 107, 107, 0.4);
-        animation: pulse 1.5s ease-out infinite;
-    }
-
-    @keyframes pulse {
-        0% {
-            transform: scale(1);
-            opacity: 1;
-        }
-        100% {
-            transform: scale(1.5);
-            opacity: 0;
-        }
+    .record-button.recording:hover {
+        background-color: #da190b;
     }
 
     .status {
-        margin-top: 1rem;
-        text-transform: capitalize;
-        color: #888;
+        margin-top: 10px;
+        color: #666;
     }
 
-    .notes-section {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
+    .notes-list {
+        margin-top: 20px;
     }
 
-    .note-card {
-        background: #2d2d2d;
-        border-radius: 12px;
-        padding: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .note-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .timestamp {
-        color: #888;
-        font-size: 0.9rem;
-    }
-
-    audio {
-        height: 32px;
+    .note {
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 10px;
     }
 
     .transcription {
-        margin: 0;
-        color: #ddd;
-        font-size: 0.95rem;
-        line-height: 1.4;
+        margin-top: 10px;
+        white-space: pre-wrap;
     }
 
-    @media (max-width: 480px) {
-        .container {
-            padding: 1rem;
-        }
+    .microphone-level {
+        width: 300px;
+        height: 20px;
+        background-color: #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
 
-        h1 {
-            font-size: 1.75rem;
-        }
-
-        .record-button {
-            width: 70px;
-            height: 70px;
-        }
-
-        .mic-icon {
-            width: 35px;
-            height: 35px;
-        }
-
-        .note-header {
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        audio {
-            width: 100%;
-        }
+    .level-bar {
+        height: 100%;
+        background-color: #4CAF50;
+        transition: width 0.1s ease;
     }
 </style>
