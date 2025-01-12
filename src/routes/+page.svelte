@@ -89,12 +89,18 @@ async function saveNote(audioBlob: Blob, transcription: string) {
         };
         
         try {
-            // Save to Notion first
+            // Save to Notion and get analysis
             const notionId = await saveToNotion(newNote);
-            newNote.notionId = notionId;
             
-            // Then save everything to localStorage
-            notes = [...notes, newNote];
+            // Update the note with the analysis results
+            const updatedNote = {
+                ...newNote,
+                notionId,
+                transcription: transcription // Replace 'Processing...' with actual transcription
+            };
+            
+            // Update the notes array with the completed note
+            notes = notes.map(n => n.id === noteId ? updatedNote : n);
             localStorage.setItem('voice-notes', JSON.stringify(notes));
         } catch (error) {
             console.error('Error saving note:', error);
