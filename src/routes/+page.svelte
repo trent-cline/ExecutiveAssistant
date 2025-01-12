@@ -14,14 +14,6 @@ interface AudioRecorderType {
     stream: MediaStream | null;
 }
 
-let isRecording = false;
-let isListening = false;
-let audioRecorder: AudioRecorderType;
-let transcription = '';
-let notes: Note[] = [];
-let microphoneLevel = 0;
-let status: 'idle' | 'recording' | 'processing' = 'idle';
-
 class AudioRecorder implements AudioRecorderType {
     mediaRecorder: MediaRecorder | null;
     audioChunks: Blob[];
@@ -37,65 +29,36 @@ class AudioRecorder implements AudioRecorderType {
 
     async initialize(): Promise<boolean> {
         try {
-            this.stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                }
-            });
-
+            this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             this.mediaRecorder = new MediaRecorder(this.stream);
-            this.setupRecognition();
-            this.setupAudioAnalyser();
-
+            
+            // Initialize speech recognition
+            if ('webkitSpeechRecognition' in window) {
+                const SpeechRecognition = (window as any).webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+                this.recognition.continuous = true;
+                this.recognition.interimResults = true;
+            }
+            
             return true;
         } catch (error) {
-            console.error('Error initializing audio:', error);
+            console.error('Error initializing audio recorder:', error);
             return false;
         }
-    }
-
-    setupRecognition(): void {
-        if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
-            // @ts-ignore: Webkit Speech Recognition isn't in standard TypeScript types
-            this.recognition = new webkitSpeechRecognition();
-            this.recognition.continuous = true;
-            this.recognition.interimResults = true;
-        }
-    }
-
-    setupAudioAnalyser(): void {
-        if (!this.stream) return;
-
-        const audioContext = new AudioContext();
-        const source = audioContext.createMediaStreamSource(this.stream);
-        const analyser = audioContext.createAnalyser();
-        source.connect(analyser);
-        
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        const updateLevel = () => {
-            analyser.getByteFrequencyData(dataArray);
-            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-            microphoneLevel = average / 128; // Normalize to 0-1
-            if (isListening || isRecording) {
-                requestAnimationFrame(updateLevel);
-            }
-        };
-        
-        updateLevel();
     }
 
     startRecording(): void {
         if (!this.mediaRecorder) return;
         
         this.audioChunks = [];
-        this.mediaRecorder.start(1000);
-        
-        this.mediaRecorder.ondataavailable = (event: BlobEvent) => {
+        this.mediaRecorder.ondataavailable = (event) => {
             this.audioChunks.push(event.data);
         };
+        this.mediaRecorder.start();
+        
+        if (this.recognition) {
+            this.recognition.start();
+        }
     }
 
     stopRecording(): Promise<Blob> {
@@ -110,9 +73,21 @@ class AudioRecorder implements AudioRecorderType {
                 resolve(audioBlob);
             };
             this.mediaRecorder.stop();
+            
+            if (this.recognition) {
+                this.recognition.stop();
+            }
         });
     }
 }
+
+let isRecording = false;
+let isListening = false;
+let audioRecorder: AudioRecorder;
+let transcription = '';
+let notes: Note[] = [];
+let microphoneLevel = 0;
+let status: 'idle' | 'recording' | 'processing' = 'idle';
 
 onMount(async () => {
     audioRecorder = new AudioRecorder();
