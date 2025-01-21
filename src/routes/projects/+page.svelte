@@ -468,7 +468,36 @@
         }
     }
 
-    onMount(loadProjects);
+    async function handleProjectAdded() {
+        await loadProjects();
+        showNewProjectModal = false;
+    }
+
+    async function handleDataChange(newData: any[]) {
+        // Ensure we're working with a fresh copy of the data
+        const updatedData = [...newData];
+        
+        switch (selectedProjectType) {
+            case 'active':
+                activeProjects = updatedData;
+                break;
+            case 'static':
+                staticWebsiteProjects = updatedData;
+                break;
+            case 'mentor':
+                mentorToLaunchProjects = updatedData;
+                break;
+        }
+    }
+
+    function handleProjectEdit(event: CustomEvent) {
+        const { row } = event.detail;
+        handleDataChange(
+            selectedProjectType === 'active' ? activeProjects : 
+            selectedProjectType === 'static' ? staticWebsiteProjects :
+            mentorToLaunchProjects
+        );
+    }
 
     async function moveProject(projectId: string, fromTable: string, toTable: string) {
         try {
@@ -481,18 +510,17 @@
 
             if (fetchError) throw fetchError;
 
+            // Remove id to create new record in target table
+            const { id, created_at, ...projectData } = project;
+
             // Insert into new table
             const { error: insertError } = await supabase
                 .from(toTable)
-                .insert([{
-                    ...project,
-                    id: undefined, // Let the new table generate a new ID
-                    user_id: $user?.id // Set the user_id
-                }]);
+                .insert([projectData]);
 
             if (insertError) throw insertError;
 
-            // Delete from old table
+            // Delete from original table
             const { error: deleteError } = await supabase
                 .from(fromTable)
                 .delete()
@@ -500,13 +528,15 @@
 
             if (deleteError) throw deleteError;
 
-            // Reload projects
+            // Refresh data
             await loadProjects();
-        } catch (e) {
-            console.error('Error moving project:', e);
-            error = e.message;
+        } catch (err) {
+            console.error('Error moving project:', err);
+            error = err.message;
         }
     }
+
+    onMount(loadProjects);
 
     // Initialize window.moveProject for the template
     if (typeof window !== 'undefined') {
@@ -556,10 +586,6 @@
         selectedProjectType = type;
         showNewProjectModal = true;
     }
-
-    async function handleProjectAdded() {
-        await loadProjects();
-    }
 </script>
 
 <div class="projects-page">
@@ -587,14 +613,16 @@
                         config={activeProjectsConfig}
                         {supabase}
                         initialData={activeProjects}
-                        onDataChange={(data) => activeProjects = data}
+                        onDataChange={(data) => handleDataChange(data)}
+                        on:edit={handleProjectEdit}
                     />
                 {:else if projectType.id === 'static'}
                     <DatabaseTable
                         config={staticWebsiteConfig}
                         {supabase}
                         initialData={staticWebsiteProjects}
-                        onDataChange={(data) => staticWebsiteProjects = data}
+                        onDataChange={(data) => handleDataChange(data)}
+                        on:edit={handleProjectEdit}
                     />
                 {:else if projectType.id === 'mentor'}
                     <DataTable 

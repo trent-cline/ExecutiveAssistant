@@ -108,7 +108,7 @@
         if (!project) return;
         
         try {
-            const { error: err } = await supabase
+            const { data, error: err } = await supabase
                 .from('active_projects')
                 .update({
                     company_name: project.company_name,
@@ -121,13 +121,26 @@
                     status: project.status,
                     website: project.website
                 })
-                .eq('id', project.id);
+                .eq('id', project.id)
+                .select();
 
             if (err) throw err;
+            if (!data || data.length === 0) throw new Error('No data returned from update');
+            
+            // Update the local project with the returned data
+            project = { ...project, ...data[0] };
             editMode = false;
         } catch (err) {
             console.error('Error updating project:', err);
             error = err.message;
+        }
+    }
+
+    function toggleEdit() {
+        editMode = !editMode;
+        if (!editMode) {
+            // If canceling edit, reload the project to reset any changes
+            loadProject();
         }
     }
 
@@ -199,19 +212,16 @@
         <div class="error">{error}</div>
     {:else if project}
         <div class="header">
-            <div class="title-section">
-                <h1>{project.company_name}</h1>
-                {#if project.website}
-                    <a href={project.website} target="_blank" rel="noopener noreferrer" class="website-link">
-                        <i class="fas fa-external-link-alt"></i>
-                        Visit Website
-                    </a>
-                {/if}
+            <h1>{project.company_name}</h1>
+            <div class="header-actions">
+                <button class="edit" on:click={toggleEdit}>
+                    {#if editMode}
+                        <i class="fas fa-times"></i> Cancel
+                    {:else}
+                        <i class="fas fa-edit"></i> Edit Project
+                    {/if}
+                </button>
             </div>
-            <button class="edit-button" on:click={() => editMode = !editMode}>
-                <i class="fas fa-{editMode ? 'save' : 'edit'}"></i>
-                {editMode ? 'Save Changes' : 'Edit Project'}
-            </button>
         </div>
 
         <div class="project-grid">
@@ -306,11 +316,11 @@
                         <button class="save" on:click={updateProject}>
                             <i class="fas fa-save"></i> Save Changes
                         </button>
-                        <button class="cancel" on:click={() => editMode = false}>
+                        <button class="cancel" on:click={toggleEdit}>
                             <i class="fas fa-times"></i> Cancel
                         </button>
                     {:else}
-                        <button class="edit" on:click={() => editMode = true}>
+                        <button class="edit" on:click={toggleEdit}>
                             <i class="fas fa-edit"></i> Edit Project
                         </button>
                     {/if}

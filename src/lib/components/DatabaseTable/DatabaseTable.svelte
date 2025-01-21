@@ -156,19 +156,22 @@
         showEditModal = true;
     }
 
-    async function handleDelete(row: any) {
+    async function handleDelete(id: string) {
         if (!confirm('Are you sure you want to delete this record?')) return;
 
         try {
             const { error: deleteError } = await supabase
                 .from(config.tableName)
                 .delete()
-                .match({ id: row.id });
+                .eq('id', id);
 
             if (deleteError) throw deleteError;
             
-            await fetchData();
-            dispatch('delete', { row });
+            // Update local data
+            data = data.filter(row => row.id !== id);
+            applyFiltersAndSort();
+            onDataChange(data);
+            dispatch('delete', { id });
         } catch (err) {
             console.error('Error deleting record:', err);
             error = err.message;
@@ -178,20 +181,33 @@
     async function handleSave(formData: any) {
         try {
             const isEdit = 'id' in formData;
-            const { error: saveError } = isEdit
+            const { data: savedData, error: saveError } = isEdit
                 ? await supabase
                     .from(config.tableName)
                     .update(formData)
-                    .match({ id: formData.id })
+                    .eq('id', formData.id)
+                    .select()
                 : await supabase
                     .from(config.tableName)
-                    .insert([formData]);
+                    .insert([formData])
+                    .select();
 
             if (saveError) throw saveError;
+            if (!savedData || savedData.length === 0) throw new Error('No data returned from save operation');
 
+            // Update local data
+            if (isEdit) {
+                data = data.map(row => 
+                    row.id === formData.id ? savedData[0] : row
+                );
+            } else {
+                data = [...data, savedData[0]];
+            }
+            
+            applyFiltersAndSort();
+            onDataChange(data);
             showEditModal = false;
-            await fetchData();
-            dispatch(isEdit ? 'edit' : 'add', { row: formData });
+            dispatch(isEdit ? 'edit' : 'add', { row: savedData[0] });
         } catch (err) {
             console.error('Error saving record:', err);
             error = err.message;
