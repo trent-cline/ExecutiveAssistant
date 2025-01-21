@@ -358,61 +358,50 @@
             {
                 id: 'company_name',
                 label: 'Company',
-                width: '200px',
-                sortable: true,
-                required: true,
-                type: 'text'
+                type: 'text',
+                template: (value, row) => row && row.id ? `
+                    <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
+                ` : value || ''
             },
             {
                 id: 'partner_name',
                 label: 'Partner',
-                width: '150px',
-                sortable: true,
-                required: true,
                 type: 'text'
             },
             {
                 id: 'industry',
                 label: 'Industry',
-                width: '150px',
-                sortable: true,
-                filterable: true,
                 type: 'text'
+            },
+            {
+                id: 'website',
+                label: 'Website',
+                type: 'url'
+            },
+            {
+                id: 'milestones',
+                label: 'Milestones',
+                type: 'milestones'
             },
             {
                 id: 'ownership',
                 label: 'Ownership %',
-                width: '120px',
-                sortable: true,
                 type: 'percentage'
             },
             {
                 id: 'development_revenue',
                 label: 'Dev Revenue',
-                width: '150px',
-                sortable: true,
                 type: 'currency'
             },
             {
                 id: 'additional_revenue',
                 label: 'Additional Revenue',
-                width: '150px',
-                sortable: true,
                 type: 'currency'
-            },
-            {
-                id: 'website',
-                label: 'Website',
-                width: '150px',
-                type: 'url'
             },
             {
                 id: 'status',
                 label: 'Status',
-                width: '120px',
-                type: 'select',
-                filterable: true,
-                filterOptions: ['Active', 'On Hold', 'Completed'],
+                type: 'text',
                 template: (value) => {
                     if (!value) return '';
                     const colors = {
@@ -422,12 +411,6 @@
                     };
                     return `<span style="color: ${colors[value] || '#6c757d'}">${value}</span>`;
                 }
-            },
-            {
-                id: 'milestones',
-                label: 'Milestones',
-                width: '200px',
-                type: 'milestones'
             }
         ],
         features: {
@@ -435,23 +418,23 @@
             filter: true,
             sort: true,
             pagination: true,
-            add: true,
             edit: true,
-            delete: true,
-            export: true
+            delete: true
         },
         permissions: {
-            canAdd: true,
             canEdit: (row) => true,
             canDelete: (row) => true
         },
-        pageSize: 10,
         customActions: [
             {
-                name: 'move',
-                label: 'Move Project',
-                icon: 'arrows-alt',
+                id: 'move_to_static',
+                label: 'Move to Static',
                 handler: (row) => moveProject(row.id, 'active_projects', 'static_website_projects')
+            },
+            {
+                id: 'move_to_mentor',
+                label: 'Move to Mentor',
+                handler: (row) => moveProject(row.id, 'active_projects', 'mentor_to_launch_projects')
             }
         ]
     };

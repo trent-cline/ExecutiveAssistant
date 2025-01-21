@@ -380,26 +380,32 @@
                             {/each}
 
                             {#if config.features?.edit || config.features?.delete || config.customActions}
-                                <td class="actions-cell">
+                                <td class="action-cell">
                                     {#if config.features?.edit && config.permissions?.canEdit(row)}
-                                        <button class="action-btn edit" on:click={() => handleEdit(row)}>
-                                            Edit
+                                        <button class="action-button edit-button" on:click={() => handleEdit(row)}>
+                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-1.073-5.73-4.412 4.412-4.412-4.412 4.412-4.412 4.412 4.412-1.073-1.073-1.073 1.073z" />
+                                            </svg>
                                         </button>
                                     {/if}
                                     
                                     {#if config.features?.delete && config.permissions?.canDelete(row)}
-                                        <button class="action-btn delete" on:click={() => handleDelete(row.id)}>
-                                            Delete
+                                        <button class="action-button delete-button" on:click={() => handleDelete(row.id)}>
+                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
                                         </button>
                                     {/if}
 
                                     {#if config.customActions}
                                         {#each config.customActions as action}
                                             <button 
-                                                class="action-btn custom"
+                                                class="action-button move-button"
                                                 on:click={() => action.handler(row)}
                                             >
-                                                {action.label}
+                                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4H9m5 8V5a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2h-2a2 2 0 01-2-2V9" />
+                                                </svg>
                                             </button>
                                         {/each}
                                     {/if}
@@ -578,7 +584,79 @@
 
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        :global(.database-table td),
+        :global(.database-table th) {
+            padding: 0.75rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-left: none;
+        }
+
+        :global(.database-table td:first-child),
+        :global(.database-table th:first-child) {
+            border-left: 1px solid #e2e8f0;
+        }
+
+        :global(.database-table tr) {
+            border-bottom: 1px solid #e2e8f0;
+            transition: background-color 0.2s;
+        }
+
+        :global(.database-table tbody tr:hover) {
+            background-color: #f8fafc;
+        }
+
+        :global(.database-table th) {
+            background-color: #f8fafc;
+            font-weight: 500;
+            color: #475569;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        /* Action column styles */
+        :global(.action-cell) {
+            padding: 0.5rem !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            min-width: 120px;
+        }
+
+        :global(.action-button) {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: none;
+            background: none;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        :global(.action-button:hover) {
+            color: #1e293b;
+            background-color: #f1f5f9;
+        }
+
+        :global(.edit-button:hover) {
+            color: #3b82f6;
+        }
+
+        :global(.delete-button:hover) {
+            color: #ef4444;
+        }
+
+        :global(.move-button:hover) {
+            color: #8b5cf6;
         }
     }
 
