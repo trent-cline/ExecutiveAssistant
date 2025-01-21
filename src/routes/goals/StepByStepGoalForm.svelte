@@ -211,9 +211,9 @@
                             <textarea
                                 id="description"
                                 bind:value={formData.description}
-                                placeholder="Add some details about your goal..."
-                                rows="3"
-                            />
+                                placeholder="Describe your goal"
+                                rows="4"
+                            ></textarea>
                         </div>
 
                         <div class="form-row">

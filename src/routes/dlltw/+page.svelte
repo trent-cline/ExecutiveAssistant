@@ -179,18 +179,26 @@
                                 placeholder="Tags (comma-separated)"
                             />
                             <div class="edit-actions">
-                                <button on:click={saveNote}>Save</button>
-                                <button on:click={() => editingNote = null}>Cancel</button>
+                                <button 
+                                    aria-label="Save note"
+                                    on:click={saveNote}>Save</button>
+                                <button 
+                                    aria-label="Cancel editing"
+                                    on:click={() => editingNote = null}>Cancel</button>
                             </div>
                         </div>
                     {:else}
                         <div class="note-header">
                             <h3>{note.name}</h3>
                             <div class="note-actions">
-                                <button on:click={() => startEditing(note)}>
+                                <button 
+                                    aria-label="Edit note"
+                                    on:click={() => startEditing(note)}>
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button on:click={() => deleteNote(note.id)}>
+                                <button 
+                                    aria-label="Delete note"
+                                    on:click={() => deleteNote(note.id)}>
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>

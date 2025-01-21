@@ -219,84 +219,84 @@
                 <h2>Project Details</h2>
                 <div class="info-grid">
                     <div class="info-item">
-                        <label>Company</label>
+                        <label for="company">Company</label>
                         {#if editMode}
-                            <input bind:value={project.company_name} />
+                            <input id="company" bind:value={project.company_name} />
                         {:else}
-                            <span>{project.company_name}</span>
+                            <p>{project.company_name || 'N/A'}</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Partner</label>
+                        <label for="partner">Partner</label>
                         {#if editMode}
-                            <input bind:value={project.partner_name} />
+                            <input id="partner" bind:value={project.partner_name} />
                         {:else}
-                            <span>{project.partner_name}</span>
+                            <p>{project.partner_name || 'N/A'}</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Industry</label>
+                        <label for="industry">Industry</label>
                         {#if editMode}
-                            <input bind:value={project.industry} />
+                            <input id="industry" bind:value={project.industry} />
                         {:else}
-                            <span>{project.industry}</span>
+                            <p>{project.industry || 'N/A'}</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Ownership %</label>
+                        <label for="ownership">Ownership %</label>
                         {#if editMode}
-                            <input type="number" bind:value={project.ownership} />
+                            <input type="number" id="ownership" bind:value={project.ownership} />
                         {:else}
-                            <span>{project.ownership}%</span>
+                            <p>{project.ownership}%</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Development Revenue</label>
+                        <label for="development-revenue">Development Revenue</label>
                         {#if editMode}
-                            <input bind:value={project.development_revenue} />
+                            <input id="development-revenue" bind:value={project.development_revenue} />
                         {:else}
-                            <span>{project.development_revenue}</span>
+                            <p>{project.development_revenue}</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Additional Revenue</label>
+                        <label for="additional-revenue">Additional Revenue</label>
                         {#if editMode}
-                            <input bind:value={project.additional_revenue} />
+                            <input id="additional-revenue" bind:value={project.additional_revenue} />
                         {:else}
-                            <span>{project.additional_revenue}</span>
+                            <p>{project.additional_revenue}</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Exclusivity</label>
+                        <label for="exclusivity">Exclusivity</label>
                         {#if editMode}
-                            <input bind:value={project.exclusivity} />
+                            <input id="exclusivity" bind:value={project.exclusivity} />
                         {:else}
-                            <span>{project.exclusivity}</span>
+                            <p>{project.exclusivity}</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Status</label>
+                        <label for="status">Status</label>
                         {#if editMode}
-                            <select bind:value={project.status}>
+                            <select id="status" bind:value={project.status}>
                                 <option value="Active">Active</option>
                                 <option value="On Hold">On Hold</option>
                                 <option value="Completed">Completed</option>
                             </select>
                         {:else}
-                            <span class="status-{project.status.toLowerCase()}">{project.status}</span>
+                            <p class="status-{project.status.toLowerCase()}">{project.status}</p>
                         {/if}
                     </div>
                     <div class="info-item">
-                        <label>Website</label>
+                        <label for="website">Website</label>
                         {#if editMode}
-                            <input bind:value={project.website} placeholder="Enter website URL" />
+                            <input id="website" bind:value={project.website} placeholder="Enter website URL" />
                         {:else}
                             {#if project.website}
                                 <a href={project.website} target="_blank" rel="noopener noreferrer" class="website-link">
                                     <i class="fas fa-external-link-alt"></i> Visit Website
                                 </a>
                             {:else}
-                                <span>No website</span>
+                                <p>No website</p>
                             {/if}
                         {/if}
                     </div>
