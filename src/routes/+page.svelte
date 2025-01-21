@@ -1,15 +1,18 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
+    import { generateUUID } from '$lib/utils';
+    import { user } from '$lib/auth';
 
     interface Note {
-        id: string;
-        timestamp: string;
-        transcription: string;
-        localStorageKey: string;
-        category?: string;
-        priority?: 'low' | 'medium' | 'high';
-        dueDate?: string;
+        id?: string;
+        name: string;
+        due_date?: string;
+        status?: string;
+        localid: string;
         summary?: string;
+        priority?: string;
+        category?: string;
+        created_at?: string;
     }
 
     let notes: Note[] = [];
@@ -147,6 +150,7 @@
             const formData = new FormData();
             formData.append('audio', audioBlob);
 
+            status = 'Transcribing audio...';
             const response = await fetch('/api/transcribe', {
                 method: 'POST',
                 body: formData
@@ -162,53 +166,77 @@
 
             // Create note with transcribed text
             const timestamp = new Date().toISOString();
-            const localStorageKey = `note_${timestamp}`;
+            const localid = generateUUID();
+            const storageKey = `note_${localid}`;
 
             const note = {
-                timestamp,
-                transcription: data.text,
-                localStorageKey
+                name: data.text,
+                localid: localid,
+                created_at: timestamp,
+                status: 'Not Started'
             };
 
-            // Analyze the transcription
-            const analysisResponse = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ transcription: data.text })
-            });
+            status = 'Analyzing transcription...';
+            let updatedNote = { ...note };
+            
+            try {
+                // Analyze the transcription
+                const analysisResponse = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ transcription: data.text })
+                });
 
-            if (!analysisResponse.ok) {
-                throw new Error('Failed to analyze note');
+                if (!analysisResponse.ok) {
+                    console.warn('Failed to analyze note, saving with basic information');
+                } else {
+                    const analysis = await analysisResponse.json();
+                    updatedNote = { ...note, ...analysis };
+                }
+            } catch (analyzeError) {
+                console.warn('Error analyzing note:', analyzeError);
+                // Continue with basic note info if analysis fails
             }
 
-            const analysis = await analysisResponse.json();
-            const updatedNote = { ...note, ...analysis };
-
-            // Save to local storage
-            localStorage.setItem(localStorageKey, JSON.stringify(updatedNote));
-
-            // Save to Notion
-            const notionResponse = await fetch('/api/notion', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(updatedNote)
-            });
-
-            if (!notionResponse.ok) {
-                const error = await notionResponse.json();
-                throw new Error(error.error || 'Failed to save to Notion');
-            }
-
-            // Update the notes array with the completed note
+            // Save to local storage first
+            localStorage.setItem(storageKey, JSON.stringify(updatedNote));
             notes = [updatedNote, ...notes];
             localStorage.setItem('voice-notes', JSON.stringify(notes));
+
+            // Try to save to Supabase
+            try {
+                status = 'Saving to database...';
+                const notionResponse = await fetch('/api/supabase', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedNote)
+                });
+
+                if (!notionResponse.ok) {
+                    const errorData = await notionResponse.json();
+                    throw new Error(errorData.error || 'Failed to save to database');
+                }
+
+                const notionData = await notionResponse.json();
+                // Update the note with the database ID
+                updatedNote.id = notionData.noteId;
+                // Update local storage with the database ID
+                localStorage.setItem(storageKey, JSON.stringify(updatedNote));
+                notes = notes.map(n => n.localid === localid ? updatedNote : n);
+                localStorage.setItem('voice-notes', JSON.stringify(notes));
+            } catch (dbError) {
+                console.error('Failed to save to database:', dbError);
+                status = `Warning: Note saved locally but not to database (${dbError.message})`;
+                // Don't throw error since we saved locally
+                return;
+            }
+
             status = '';
-            transcription = '';
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving note:', error);
             status = `Error: ${error.message}`;
             throw error;
@@ -219,10 +247,10 @@
     async function deleteNote(note: Note) {
         if (confirm('Are you sure you want to delete this note?')) {
             // Remove from local storage
-            localStorage.removeItem(note.localStorageKey);
+            localStorage.removeItem(`note_${note.localid}`);
             
             // Update notes array
-            notes = notes.filter(n => n.localStorageKey !== note.localStorageKey);
+            notes = notes.filter(n => n.localid !== note.localid);
             localStorage.setItem('voice-notes', JSON.stringify(notes));
         }
     }
@@ -240,235 +268,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </svelte:head>
 
-<style>
-    :global(body) {
-        background-color: white;
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
-    }
-
-    .container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-
-    .controls-section {
-        background-color: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-        text-align: center;
-    }
-
-    .record-button {
-        background-color: #4CAF50;
-        border: none;
-        color: white;
-        padding: 15px 32px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        border-radius: 4px;
-        transition: background-color 0.3s;
-    }
-
-    .record-button:hover {
-        background-color: #45a049;
-    }
-
-    .record-button.recording {
-        background-color: #f44336;
-    }
-
-    .record-button.recording:hover {
-        background-color: #da190b;
-    }
-
-    .status {
-        margin-top: 10px;
-        color: #666;
-        font-size: 14px;
-    }
-
-    .notes-list {
-        display: grid;
-        gap: 20px;
-        grid-template-columns: 1fr;
-    }
-
-    .note {
-        background-color: #F0F8FF; /* Light Steel Blue */
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .note:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    .note-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .note-metadata {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 10px;
-        margin-bottom: 15px;
-    }
-
-    .metadata-item {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .metadata-label {
-        font-size: 12px;
-        color: #666;
-        margin-bottom: 4px;
-    }
-
-    .metadata-value {
-        font-size: 14px;
-        color: #333;
-    }
-
-    .transcription {
-        margin-top: 10px;
-        white-space: pre-wrap;
-        color: #333;
-        line-height: 1.5;
-        font-size: 16px;
-        padding: 10px;
-        background-color: rgba(255, 255, 255, 0.5);
-        border-radius: 4px;
-    }
-
-    .microphone-level {
-        width: 300px;
-        height: 20px;
-        background-color: #ddd;
-        border-radius: 10px;
-        overflow: hidden;
-        margin: 10px auto;
-    }
-
-    .level-bar {
-        height: 100%;
-        background-color: #4CAF50;
-        transition: width 0.1s ease;
-    }
-
-    .delete-button {
-        background: none;
-        border: none;
-        color: #666;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 8px;
-        line-height: 1;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-        touch-action: manipulation;
-    }
-
-    .delete-button:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-        color: #f44336;
-    }
-
-    @media (hover: none) {
-        .delete-button {
-            opacity: 1;
-        }
-    }
-
-    @media (min-width: 768px) {
-        .notes-list {
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        }
-    }
-</style>
-
 <div class="container">
-    <div class="controls-section">
-        <h1>Voice Notes</h1>
+    <div class="recorder-container">
+        <div class="status-text">{status}</div>
+        
         <button 
             class="record-button" 
-            class:recording={isRecording} 
+            class:recording={isRecording}
             on:click={toggleRecording}
+            disabled={!audioRecorder}
         >
             {isRecording ? 'Stop Recording' : 'Start Recording'}
         </button>
-        
-        {#if isRecording}
-            <div class="microphone-level">
-                <div class="level-bar" style="width: {microphoneLevel * 100}%"></div>
-            </div>
-        {/if}
-        
-        {#if status}
-            <div class="status">{status}</div>
-        {/if}
-    </div>
 
-    <div class="notes-list">
-        {#each notes as note}
-            <div class="note">
-                <div class="note-header">
-                    <div class="metadata-item">
-                        <span class="metadata-label">Time</span>
-                        <span class="metadata-value">{new Date(note.timestamp).toLocaleString()}</span>
-                    </div>
-                    <button 
-                        class="delete-button"
-                        on:click={() => deleteNote(note)}
-                        aria-label="Delete note"
-                    >
-                        ×
-                    </button>
-                </div>
-                
-                <div class="note-metadata">
-                    <div class="metadata-item">
-                        <span class="metadata-label">Category</span>
-                        <span class="metadata-value">{note.category || 'N/A'}</span>
-                    </div>
-                    <div class="metadata-item">
-                        <span class="metadata-label">Priority</span>
-                        <span class="metadata-value">{note.priority || 'N/A'}</span>
-                    </div>
-                    {#if note.dueDate}
-                        <div class="metadata-item">
-                            <span class="metadata-label">Due Date</span>
-                            <span class="metadata-value">{new Date(note.dueDate).toLocaleDateString()}</span>
-                        </div>
-                    {/if}
-                </div>
-                
-                <div class="transcription">
-                    {note.transcription}
-                </div>
+        {#if isRecording}
+            <div class="recording-indicator">
+                <div class="microphone-level" style="height: {microphoneLevel}%"></div>
             </div>
-        {/each}
+        {/if}
+
+        {#if currentTranscript}
+            <div class="current-transcript">
+                {currentTranscript}
+            </div>
+        {/if}
     </div>
 </div>
+
+<style>
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    .recorder-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 2rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-top: 2rem;
+    }
+
+    .status-text {
+        color: #666;
+        text-align: center;
+        min-height: 1.5em;
+    }
+
+    .record-button {
+        background: #ff4444;
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 50px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .record-button:hover:not(:disabled) {
+        background: #cc0000;
+        transform: scale(1.05);
+    }
+
+    .record-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .record-button.recording {
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .recording-indicator {
+        width: 20px;
+        height: 60px;
+        background: #eee;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .microphone-level {
+        width: 100%;
+        background: #ff4444;
+        transition: height 0.1s;
+        position: absolute;
+        bottom: 0;
+    }
+
+    .current-transcript {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f5f5f5;
+        border-radius: 4px;
+        width: 100%;
+        max-width: 500px;
+        min-height: 100px;
+    }
+
+    /* Mobile styles */
+    @media (max-width: 767px) {
+        .container {
+            padding: 0.5rem;
+        }
+
+        .recorder-container {
+            margin-top: 1rem;
+            padding: 1rem;
+        }
+
+        .record-button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+        }
+    }
+</style>

@@ -9,27 +9,33 @@ const openai = new OpenAI({
 
 export interface AIAnalysis {
     category: string;
-    priority: 'low' | 'medium' | 'high';
-    dueDate?: string;
+    priority: 'Low' | 'Medium' | 'High';
+    due_date?: string;
     summary: string;
+    status?: string;
 }
 
 function parseAnalysisContent(content: string): AIAnalysis {
     const lines = content.split('\n').map(line => line.trim());
     const analysis: AIAnalysis = {
-        category: 'note', // default value
-        priority: 'low',  // default value
+        category: 'Note', // default value
+        priority: 'Low',  // default value
         summary: '',
+        status: 'Not Started' // default value
     };
 
     try {
         for (const line of lines) {
             if (line.startsWith('Category:')) {
-                analysis.category = line.replace('Category:', '').trim().toLowerCase();
+                const category = line.replace('Category:', '').trim();
+                // Match database enum values exactly
+                if (['Note', 'Task', 'Reminder'].includes(category)) {
+                    analysis.category = category;
+                }
             } else if (line.startsWith('Priority:')) {
-                const priority = line.replace('Priority:', '').trim().toLowerCase();
-                if (['low', 'medium', 'high'].includes(priority)) {
-                    analysis.priority = priority as 'low' | 'medium' | 'high';
+                const priority = line.replace('Priority:', '').trim();
+                if (['Low', 'Medium', 'High'].includes(priority)) {
+                    analysis.priority = priority;
                 }
             } else if (line.startsWith('Due Date:')) {
                 const dateStr = line.replace('Due Date:', '').trim();
@@ -37,7 +43,7 @@ function parseAnalysisContent(content: string): AIAnalysis {
                     try {
                         const date = new Date(dateStr);
                         if (!isNaN(date.getTime())) {
-                            analysis.dueDate = date.toISOString();
+                            analysis.due_date = date.toISOString();
                         }
                     } catch (error) {
                         console.warn('Failed to parse date:', dateStr);
@@ -51,11 +57,6 @@ function parseAnalysisContent(content: string): AIAnalysis {
         // Validate required fields
         if (!analysis.summary) {
             throw new Error('No summary found in analysis');
-        }
-
-        // Ensure category is one of the expected values
-        if (!['task', 'reminder', 'idea', 'note'].includes(analysis.category)) {
-            analysis.category = 'note'; // Default to 'note' if invalid
         }
 
         return analysis;
@@ -72,9 +73,10 @@ export const POST = (async ({ request }) => {
         // Check for empty or "Processing..." transcription
         if (!transcription || transcription === 'Processing...' || transcription.trim().length === 0) {
             return json({
-                category: 'note',
-                priority: 'low',
-                summary: 'No transcription available'
+                category: 'Note',
+                priority: 'Low',
+                summary: 'No transcription available',
+                status: 'Not Started'
             });
         }
 
@@ -83,13 +85,13 @@ export const POST = (async ({ request }) => {
             messages: [
                 {
                     role: "system",
-                    content: "You are a personal assistant that analyzes voice notes. Extract key information and categorize the note. If a due date is mentioned, format it as YYYY-MM-DD."
+                    content: "You are a personal assistant that analyzes voice notes. Extract key information and categorize the note. Categories must be exactly 'Note', 'Task', or 'Reminder'. Priority must be exactly 'Low', 'Medium', or 'High'. If a due date is mentioned, format it as YYYY-MM-DD."
                 },
                 {
                     role: "user",
                     content: `Analyze this voice note and provide in this exact format:
-                    Category: [task/reminder/idea/note]
-                    Priority: [low/medium/high]
+                    Category: [Note/Task/Reminder]
+                    Priority: [Low/Medium/High]
                     Due Date: [YYYY-MM-DD or N/A]
                     Summary: [brief summary]
                     
