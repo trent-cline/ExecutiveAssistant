@@ -4,7 +4,6 @@
     import { slide } from 'svelte/transition';
     import type { Column } from './types';
 
-    export let options: string[] = [];
     export let column: Column;
     export let selectedOptions: Set<string> = new Set();
     
@@ -46,6 +45,7 @@
         on:outclick={handleClickOutside}
         role="dialog"
         aria-label="Filter options"
+        aria-modal="true"
         transition:slide
     >
         <div class="filter-header">

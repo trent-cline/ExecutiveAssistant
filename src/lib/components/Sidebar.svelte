@@ -2,20 +2,25 @@
     import { user } from '$lib/auth';
     import { page } from '$app/stores';
     import { supabase } from '$lib/supabase';
-    import { slide } from 'svelte/transition';
+    import { slide, fade } from 'svelte/transition';
     
     export let isOpen = false;
     
-    let isMobile = false;
+    let isMobile = true; // Default to mobile
     
     // Check if device is mobile on mount and window resize
     function checkMobile() {
-        isMobile = window.innerWidth < 768;
+        isMobile = window.innerWidth < 1024; // Increased breakpoint for better tablet support
     }
     
     async function handleLogout() {
         await supabase.auth.signOut();
         window.location.href = '/';
+    }
+
+    // Initialize mobile check on mount
+    if (typeof window !== 'undefined') {
+        checkMobile();
     }
 </script>
 
@@ -34,7 +39,7 @@
         role="button"
         tabindex="0"
         aria-label="Close sidebar overlay"
-        transition:slide
+        transition:fade={{ duration: 200 }}
     ></div>
 {/if}
 
@@ -43,9 +48,10 @@
     class:open={isOpen} 
     class:mobile={isMobile}
     aria-label="Main navigation"
+    transition:slide={{ duration: 300, axis: 'x' }}
 >
     <div class="sidebar-header">
-        <h2>Personal Assistant</h2>
+        <h2>Executive Assistant</h2>
         {#if isMobile}
             <button 
                 class="close-btn" 
@@ -63,76 +69,85 @@
             class:active={$page.url.pathname === '/'} 
             on:click={() => isMobile && (isOpen = false)}
         >
-            <i class="fas fa-microphone"></i>
-            Record Note
+            <i class="fas fa-microphone" aria-hidden="true"></i>
+            Voice Notes
         </a>
-        
+
         {#if $user}
             <a 
                 href="/notes" 
-                class:active={$page.url.pathname === '/notes'}
+                class:active={$page.url.pathname === '/notes'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-sticky-note"></i>
+                <i class="fas fa-pen" aria-hidden="true"></i>
                 My Notes
             </a>
-            
+
             <a 
-                href="/table" 
-                class:active={$page.url.pathname === '/table'}
+                href="/private-notes" 
+                class:active={$page.url.pathname === '/private-notes'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-brain"></i>
+                <i class="fas fa-envelope" aria-hidden="true"></i>
+                Private Notes
+            </a>
+
+            <a 
+                href="/brain-inbox" 
+                class:active={$page.url.pathname === '/brain-inbox'} 
+                on:click={() => isMobile && (isOpen = false)}
+            >
+                <i class="fas fa-brain" aria-hidden="true"></i>
                 Brain Inbox
             </a>
 
             <a 
                 href="/goals" 
-                class:active={$page.url.pathname === '/goals'}
+                class:active={$page.url.pathname === '/goals'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-bullseye"></i>
+                <i class="fas fa-bullseye" aria-hidden="true"></i>
                 Goals
             </a>
 
             <a 
                 href="/shopping" 
-                class:active={$page.url.pathname === '/shopping'}
+                class:active={$page.url.pathname === '/shopping'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-shopping-cart"></i>
+                <i class="fas fa-shopping-cart" aria-hidden="true"></i>
                 Shopping List
             </a>
 
             <a 
                 href="/projects" 
-                class:active={$page.url.pathname === '/projects'}
+                class:active={$page.url.pathname === '/projects'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-project-diagram"></i>
+                <i class="fas fa-tasks" aria-hidden="true"></i>
                 Active Projects
             </a>
 
             <a 
                 href="/dlltw" 
-                class:active={$page.url.pathname === '/dlltw'}
+                class:active={$page.url.pathname === '/dlltw'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-book"></i>
+                <i class="fas fa-book" aria-hidden="true"></i>
                 DLLTW Notes
             </a>
-            
+
             <button class="logout-btn" on:click={handleLogout}>
-                <i class="fas fa-sign-out-alt"></i>
+                <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
                 Logout
             </button>
         {:else}
             <a 
                 href="/login" 
-                class:active={$page.url.pathname === '/login'}
+                class:active={$page.url.pathname === '/login'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-sign-in-alt"></i>
+                <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
                 Login
             </a>
         {/if}
@@ -147,22 +162,28 @@
         height: 100vh;
         background: #1a1a1a;
         color: white;
-        width: 250px;
-        padding: 1rem;
+        width: 100%;
+        max-width: 300px;
+        padding: 1.5rem;
         display: flex;
         flex-direction: column;
         z-index: 1000;
-        transition: transform 0.3s ease;
-    }
-
-    /* Mobile styles */
-    nav.mobile {
         transform: translateX(-100%);
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
     }
 
-    nav.mobile.open {
+    /* Mobile styles are default now */
+    nav.open {
         transform: translateX(0);
+    }
+
+    /* Desktop styles */
+    @media (min-width: 1024px) {
+        nav {
+            transform: none;
+            width: 280px;
+        }
     }
 
     .overlay {
@@ -171,23 +192,25 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.6);
         z-index: 999;
+        backdrop-filter: blur(2px);
     }
 
     .sidebar-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-bottom: 1rem;
+        padding-bottom: 1.25rem;
         border-bottom: 1px solid #333;
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
     }
 
     h2 {
         margin: 0;
-        font-size: 1.2rem;
-        font-weight: 500;
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
     }
 
     .close-btn {
@@ -196,71 +219,83 @@
         color: white;
         font-size: 1.5rem;
         cursor: pointer;
-        padding: 0.5rem;
+        padding: 0.75rem;
+        margin: -0.75rem;
+        border-radius: 50%;
+        transition: background-color 0.2s;
     }
 
     .close-btn:hover {
-        color: #ccc;
+        background-color: rgba(255, 255, 255, 0.1);
     }
 
     .nav-links {
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
+        flex: 1;
     }
 
-    a, .logout-btn {
+    .nav-links a {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        color: white;
+        gap: 1rem;
+        padding: 0.875rem 1rem;
+        color: #fff;
         text-decoration: none;
         border-radius: 8px;
         transition: background-color 0.2s;
+        font-size: 1rem;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    a:hover, .logout-btn:hover {
-        background: #333;
+    .nav-links a:active {
+        background-color: rgba(255, 255, 255, 0.15);
     }
 
-    .active {
-        background: #0066cc;
+    .nav-links a.active {
+        background-color: rgba(255, 255, 255, 0.1);
+        font-weight: 500;
     }
 
-    .active:hover {
-        background: #0052a3;
+    .nav-links a:hover:not(.active) {
+        background-color: rgba(255, 255, 255, 0.05);
     }
 
-    .logout-btn {
-        background: none;
-        border: none;
-        color: #ff4444;
-        cursor: pointer;
-        width: 100%;
-        text-align: left;
-        margin-top: auto;
-    }
-
-    .logout-btn:hover {
-        background: #331111;
-    }
-
-    i {
-        width: 20px;
+    .nav-links i {
+        font-size: 1.25rem;
+        width: 1.5rem;
         text-align: center;
     }
 
-    /* Desktop styles */
-    @media (min-width: 768px) {
-        nav {
-            transform: none;
-            box-shadow: none;
+    .logout-btn {
+        margin-top: auto;
+        background: none;
+        border: none;
+        color: #ff4444;
+        padding: 0.875rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+    }
+
+    .logout-btn:hover {
+        background-color: rgba(255, 68, 68, 0.1);
+    }
+
+    /* Touch device optimizations */
+    @media (hover: none) {
+        .nav-links a:hover:not(.active) {
+            background-color: transparent;
         }
 
-        /* Add margin to main content on desktop */
-        :global(main) {
-            margin-left: 250px;
+        .logout-btn:hover {
+            background-color: transparent;
         }
     }
 </style>

@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import { generateUUID } from '$lib/utils';
     import { user } from '$lib/auth';
+    import { supabase } from '$lib/supabase';
 
     interface Note {
         id?: string;
@@ -26,9 +27,7 @@
     let animationFrameId: number;
     let isMobile = false;
 
-    // Load notes from localStorage on mount
     onMount(() => {
-        // Detect mobile device
         isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         console.log('Device type:', isMobile ? 'mobile' : 'desktop');
 
@@ -39,7 +38,6 @@
         initializeRecorder();
     });
 
-    // Initialize recorder
     async function initializeRecorder() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -50,7 +48,6 @@
                 }
             });
 
-            // Get supported MIME types
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
                 ? 'audio/webm;codecs=opus'
                 : 'audio/webm';
@@ -83,7 +80,7 @@
                 currentTranscript = '';
                 status = 'Recording...';
                 
-                audioRecorder.start(1000); // Record in 1-second chunks
+                audioRecorder.start(1000);
                 updateMicrophoneLevel();
             };
 
@@ -103,7 +100,6 @@
         }
     }
 
-    // Handle recording state
     async function toggleRecording() {
         if (!audioRecorder && !await initializeRecorder()) {
             return;
@@ -118,7 +114,6 @@
         }
     }
 
-    // Update microphone level visualization
     function updateMicrophoneLevel() {
         if (!isRecording) return;
 
@@ -144,7 +139,6 @@
         updateLevel();
     }
 
-    // Save note with transcription
     async function saveNote(audioBlob: Blob, text: string) {
         try {
             const formData = new FormData();
@@ -164,7 +158,6 @@
             const data = await response.json();
             console.log('Transcription result:', data);
 
-            // Create note with transcribed text
             const timestamp = new Date().toISOString();
             const localid = generateUUID();
             const storageKey = `note_${localid}`;
@@ -180,7 +173,6 @@
             let updatedNote = { ...note };
             
             try {
-                // Analyze the transcription
                 const analysisResponse = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: {
@@ -197,17 +189,26 @@
                 }
             } catch (analyzeError) {
                 console.warn('Error analyzing note:', analyzeError);
-                // Continue with basic note info if analysis fails
             }
 
-            // Save to local storage first
             localStorage.setItem(storageKey, JSON.stringify(updatedNote));
             notes = [updatedNote, ...notes];
             localStorage.setItem('voice-notes', JSON.stringify(notes));
 
-            // Try to save to Supabase
             try {
-                status = 'Saving to database...';
+                status = 'Saving to private notes...';
+                const { error: privateNoteError } = await supabase
+                    .from('private_notes')
+                    .insert([
+                        {
+                            content: data.text,
+                            created_at: timestamp,
+                            analyzed: false
+                        }
+                    ]);
+
+                if (privateNoteError) throw privateNoteError;
+
                 const notionResponse = await fetch('/api/supabase', {
                     method: 'POST',
                     headers: {
@@ -222,16 +223,13 @@
                 }
 
                 const notionData = await notionResponse.json();
-                // Update the note with the database ID
                 updatedNote.id = notionData.noteId;
-                // Update local storage with the database ID
                 localStorage.setItem(storageKey, JSON.stringify(updatedNote));
                 notes = notes.map(n => n.localid === localid ? updatedNote : n);
                 localStorage.setItem('voice-notes', JSON.stringify(notes));
             } catch (dbError) {
                 console.error('Failed to save to database:', dbError);
                 status = `Warning: Note saved locally but not to database (${dbError.message})`;
-                // Don't throw error since we saved locally
                 return;
             }
 
@@ -243,13 +241,9 @@
         }
     }
 
-    // Delete note
     async function deleteNote(note: Note) {
         if (confirm('Are you sure you want to delete this note?')) {
-            // Remove from local storage
             localStorage.removeItem(`note_${note.localid}`);
-            
-            // Update notes array
             notes = notes.filter(n => n.localid !== note.localid);
             localStorage.setItem('voice-notes', JSON.stringify(notes));
         }

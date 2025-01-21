@@ -4,6 +4,7 @@
     import { user } from '$lib/auth';
     import { goto } from '$app/navigation';
     import DataTable from '$lib/components/DataTable/DataTable.svelte';
+    import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
     import type { Column } from '$lib/components/DataTable/types';
     import NewProjectModal from './NewProjectModal.svelte';
     import ProjectMilestones from './ProjectMilestones.svelte';
@@ -270,6 +271,191 @@
         }
     ];
 
+    const staticWebsiteConfig = {
+        tableName: 'static_website_projects',
+        columns: [
+            {
+                id: 'company_name',
+                label: 'Company',
+                width: '200px',
+                sortable: true,
+                required: true,
+                type: 'text',
+                template: (value, row) => row && row.id ? `
+                    <a href="/projects/static/${row.id}" class="company-link">${value || ''}</a>
+                ` : value || ''
+            },
+            {
+                id: 'partner_name',
+                label: 'Partner',
+                width: '150px',
+                sortable: true,
+                required: true
+            },
+            {
+                id: 'industry',
+                label: 'Industry',
+                width: '150px',
+                sortable: true,
+                filterable: true
+            },
+            {
+                id: 'hosting_provider',
+                label: 'Hosting',
+                width: '150px',
+                sortable: true,
+                filterable: true
+            },
+            {
+                id: 'domain_provider',
+                label: 'Domain',
+                width: '150px',
+                sortable: true
+            },
+            {
+                id: 'monthly_cost',
+                label: 'Monthly Cost',
+                width: '120px',
+                sortable: true,
+                type: 'currency'
+            },
+            {
+                id: 'website',
+                label: 'Website',
+                width: '150px',
+                type: 'url'
+            },
+            {
+                id: 'status',
+                label: 'Status',
+                width: '120px',
+                type: 'select',
+                filterable: true,
+                filterOptions: ['Active', 'On Hold', 'Completed']
+            }
+        ],
+        features: {
+            search: true,
+            filter: true,
+            sort: true,
+            pagination: true,
+            add: true,
+            edit: true,
+            delete: true,
+            export: true
+        },
+        permissions: {
+            canAdd: true,
+            canEdit: (row) => true,
+            canDelete: (row) => true
+        },
+        pageSize: 10
+    };
+
+    const activeProjectsConfig = {
+        tableName: 'active_projects',
+        columns: [
+            {
+                id: 'company_name',
+                label: 'Company',
+                width: '200px',
+                sortable: true,
+                required: true,
+                type: 'text'
+            },
+            {
+                id: 'partner_name',
+                label: 'Partner',
+                width: '150px',
+                sortable: true,
+                required: true,
+                type: 'text'
+            },
+            {
+                id: 'industry',
+                label: 'Industry',
+                width: '150px',
+                sortable: true,
+                filterable: true,
+                type: 'text'
+            },
+            {
+                id: 'ownership',
+                label: 'Ownership %',
+                width: '120px',
+                sortable: true,
+                type: 'percentage'
+            },
+            {
+                id: 'development_revenue',
+                label: 'Dev Revenue',
+                width: '150px',
+                sortable: true,
+                type: 'currency'
+            },
+            {
+                id: 'additional_revenue',
+                label: 'Additional Revenue',
+                width: '150px',
+                sortable: true,
+                type: 'currency'
+            },
+            {
+                id: 'website',
+                label: 'Website',
+                width: '150px',
+                type: 'url'
+            },
+            {
+                id: 'status',
+                label: 'Status',
+                width: '120px',
+                type: 'select',
+                filterable: true,
+                filterOptions: ['Active', 'On Hold', 'Completed'],
+                template: (value) => {
+                    if (!value) return '';
+                    const colors = {
+                        'Active': '#28a745',
+                        'On Hold': '#ffc107',
+                        'Completed': '#6c757d'
+                    };
+                    return `<span style="color: ${colors[value] || '#6c757d'}">${value}</span>`;
+                }
+            },
+            {
+                id: 'milestones',
+                label: 'Milestones',
+                width: '200px',
+                type: 'milestones'
+            }
+        ],
+        features: {
+            search: true,
+            filter: true,
+            sort: true,
+            pagination: true,
+            add: true,
+            edit: true,
+            delete: true,
+            export: true
+        },
+        permissions: {
+            canAdd: true,
+            canEdit: (row) => true,
+            canDelete: (row) => true
+        },
+        pageSize: 10,
+        customActions: [
+            {
+                name: 'move',
+                label: 'Move Project',
+                icon: 'arrows-alt',
+                handler: (row) => moveProject(row.id, 'active_projects', 'static_website_projects')
+            }
+        ]
+    };
+
     async function loadProjects() {
         if (!$user) {
             goto('/login');
@@ -414,99 +600,18 @@
                 </div>
 
                 {#if projectType.id === 'active'}
-                    <div class="w-full">
-                        <div class="flex justify-between items-center mb-4">
-                            <h1 class="text-2xl font-bold">Active Projects</h1>
-                            <button
-                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                                on:click={() => showNewProjectModal = true}
-                            >
-                                Add Project
-                            </button>
-                        </div>
-
-                        <div class="overflow-x-auto bg-white shadow-md rounded-lg">
-                            <table class="min-w-full table-auto">
-                                <thead>
-                                    <tr class="bg-gray-100">
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Website</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Milestones</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    {#each activeProjects as project}
-                                        <tr>
-                                            <td class="px-6 py-4">
-                                                <div class="text-sm font-medium text-gray-900">{project.company_name}</div>
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <div class="text-sm text-gray-500">{project.industry}</div>
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                {#if project.website}
-                                                    <a href={project.website} target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-900">
-                                                        {project.website}
-                                                    </a>
-                                                {:else}
-                                                    <span class="text-gray-400">-</span>
-                                                {/if}
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <ProjectMilestones 
-                                                    milestones={{
-                                                        industry_identified: project.industry_identified || false,
-                                                        partner_ided: project.partner_ided || false,
-                                                        prototype_created: project.prototype_created || false,
-                                                        deal_signed: project.deal_signed || false
-                                                    }}
-                                                    on:change={async (e) => {
-                                                        try {
-                                                            const { error } = await supabase
-                                                                .from('active_projects')
-                                                                .update({
-                                                                    industry_identified: e.detail.milestones.industry_identified,
-                                                                    partner_ided: e.detail.milestones.partner_ided,
-                                                                    prototype_created: e.detail.milestones.prototype_created,
-                                                                    deal_signed: e.detail.milestones.deal_signed
-                                                                })
-                                                                .eq('id', project.id);
-                                                            
-                                                            if (error) throw error;
-                                                        } catch (err) {
-                                                            console.error('Error updating project milestones:', err);
-                                                        }
-                                                    }}
-                                                />
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <button
-                                                    class="text-red-600 hover:text-red-900 mr-2"
-                                                    on:click={() => handleDelete(project.id)}
-                                                >
-                                                    Delete
-                                                </button>
-                                                <button
-                                                    class="text-blue-600 hover:text-blue-900"
-                                                    on:click={() => handleEdit(project)}
-                                                >
-                                                    Edit
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <DatabaseTable
+                        config={activeProjectsConfig}
+                        {supabase}
+                        initialData={activeProjects}
+                        onDataChange={(data) => activeProjects = data}
+                    />
                 {:else if projectType.id === 'static'}
-                    <DataTable 
-                        data={staticWebsiteProjects}
-                        columns={staticColumns}
-                        sortable={true}
-                        searchable={true}
+                    <DatabaseTable
+                        config={staticWebsiteConfig}
+                        {supabase}
+                        initialData={staticWebsiteProjects}
+                        onDataChange={(data) => staticWebsiteProjects = data}
                     />
                 {:else if projectType.id === 'mentor'}
                     <DataTable 

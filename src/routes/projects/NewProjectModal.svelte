@@ -30,7 +30,7 @@
     let loading = false;
     let error = '';
 
-    function close() {
+    function closeModal() {
         show = false;
         dispatch('close');
     }
@@ -95,7 +95,7 @@
             if (err) throw err;
 
             dispatch('projectAdded');
-            close();
+            closeModal();
         } catch (err) {
             console.error('Error adding project:', err);
             error = err.message;
@@ -106,7 +106,7 @@
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click={close} in:fade>
+    <div class="modal-backdrop" on:click={closeModal} in:fade>
         <div 
             class="modal-content"
             on:click|stopPropagation
@@ -114,8 +114,12 @@
         >
             <div class="modal-header">
                 <h2>Add New {projectType === 'active' ? 'Active' : projectType === 'static' ? 'Static Website' : 'Mentor to Launch'} Project</h2>
-                <button class="close-btn" on:click={close}>
-                    <i class="fas fa-times"></i>
+                <button 
+                    class="close-button" 
+                    on:click={closeModal}
+                    aria-label="Close modal"
+                >
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
 
@@ -257,7 +261,7 @@
                 {/if}
 
                 <div class="form-actions">
-                    <button type="button" class="cancel-btn" on:click={close} disabled={loading}>
+                    <button type="button" class="cancel-btn" on:click={closeModal} disabled={loading}>
                         Cancel
                     </button>
                     <button type="submit" class="submit-btn" disabled={loading}>
@@ -310,7 +314,7 @@
         margin: 0;
     }
 
-    .close-btn {
+    .close-button {
         background: none;
         border: none;
         color: #4a5568;
@@ -319,7 +323,7 @@
         padding: 0.5rem;
     }
 
-    .close-btn:hover {
+    .close-button:hover {
         color: #2d3748;
     }
 
@@ -334,13 +338,10 @@
     }
 
     .form-group {
+        margin-bottom: 1rem;
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
-    }
-
-    .form-group.full-width {
-        grid-column: 1 / -1;
     }
 
     label {
@@ -349,7 +350,7 @@
         color: #4a5568;
     }
 
-    input, select, textarea {
+    input, select {
         padding: 0.5rem;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
@@ -357,6 +358,11 @@
     }
 
     textarea {
+        width: 100%;
+        min-height: 100px;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
         resize: vertical;
     }
 
