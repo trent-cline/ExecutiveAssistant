@@ -78,7 +78,7 @@
             width: '150px',
             template: (value) => value ? `
                 <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
-                    <i class="fas fa-external-link-alt"></i> Visit
+                    <i class="fas fa-arrow-up-right-from-square"></i>
                 </a>
             ` : '<span class="no-website">-</span>'
         },
@@ -122,7 +122,7 @@
                 <div class="action-buttons">
                     ${row.website ? `
                         <a href="${row.website}" target="_blank" rel="noopener noreferrer" class="website-link">
-                            <i class="fas fa-external-link-alt"></i> Website
+                            <i class="fas fa-arrow-up-right-from-square"></i> Website
                         </a>
                     ` : ''}
                     <button onclick="window.moveProject('${row.id}')" class="move-button">
@@ -163,7 +163,7 @@
             width: '150px',
             template: (value) => value ? `
                 <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
-                    <i class="fas fa-external-link-alt"></i> Visit
+                    <i class="fas fa-arrow-up-right-from-square"></i>
                 </a>
             ` : '<span class="no-website">-</span>'
         },
@@ -230,25 +230,6 @@
                 id: 'development_revenue',
                 label: 'Dev Revenue',
                 type: 'currency'
-            },
-            {
-                id: 'additional_revenue',
-                label: 'Additional Revenue',
-                type: 'currency'
-            },
-            {
-                id: 'status',
-                label: 'Status',
-                type: 'text',
-                template: (value) => {
-                    if (!value) return '';
-                    const colors = {
-                        'Active': '#28a745',
-                        'On Hold': '#ffc107',
-                        'Completed': '#6c757d'
-                    };
-                    return `<span style="color: ${colors[value] || '#6c757d'}">${value}</span>`;
-                }
             }
         ],
         features: {
@@ -263,11 +244,26 @@
             canEdit: (row) => true,
             canDelete: (row) => true
         },
-        customActions: [
+        actions: [
             {
-                id: 'move_to_mentor',
+                icon: 'pen-to-square',
+                label: 'Edit',
+                handler: (row) => handleProjectEdit(row)
+            },
+            {
+                icon: 'arrow-down',
                 label: 'Move to Mentor',
                 handler: (row) => moveProject(row.id, 'active_projects', 'mentor_to_launch_projects')
+            },
+            {
+                icon: 'chart-line',
+                label: 'Analytics',
+                handler: (row) => showAnalytics(row)
+            },
+            {
+                icon: 'trash-can',
+                label: 'Delete',
+                handler: (row) => handleProjectDelete(row.id, 'active')
             }
         ]
     };
@@ -278,48 +274,40 @@
             {
                 id: 'company_name',
                 label: 'Business',
-                width: '200px',
-                sortable: true,
-                required: true,
                 type: 'text',
                 template: (value, row) => row && row.id ? `
                     <a href="/projects/mentor/${row.id}" class="company-link">${value || ''}</a>
                 ` : value || ''
             },
             {
+                id: 'website',
+                label: 'Website',
+                type: 'url',
+                template: (value) => value ? `
+                    <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
+                        <i class="fas fa-arrow-up-right-from-square"></i>
+                    </a>
+                ` : '<span class="no-website">-</span>'
+            },
+            {
                 id: 'owner_name',
                 label: 'Owner',
-                width: '150px',
-                sortable: true,
-                required: true
+                type: 'text'
             },
             {
                 id: 'industry',
                 label: 'Industry',
-                width: '150px',
-                sortable: true,
-                filterable: true
-            },
-            {
-                id: 'target_market',
-                label: 'Target Market',
-                width: '200px',
-                sortable: true,
-                filterable: true
+                type: 'text'
             },
             {
                 id: 'revenue_model',
                 label: 'Revenue Model',
-                width: '150px',
-                sortable: true,
-                filterable: true
+                type: 'text'
             },
             {
                 id: 'launch_status',
                 label: 'Status',
-                width: '120px',
                 type: 'select',
-                filterable: true,
                 filterOptions: ['Planning', 'Building', 'Marketing', 'Operating'],
                 template: (value) => {
                     const colors = {
@@ -332,20 +320,8 @@
                 }
             },
             {
-                id: 'website',
-                label: 'Website',
-                width: '150px',
-                type: 'url',
-                template: (value) => value ? `
-                    <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
-                        <i class="fas fa-external-link-alt"></i> Visit
-                    </a>
-                ` : '<span class="no-website">-</span>'
-            },
-            {
                 id: 'milestones',
                 label: 'Milestones',
-                width: '150px',
                 type: 'milestones'
             }
         ],
@@ -363,6 +339,28 @@
             canEdit: (row) => true,
             canDelete: (row) => true
         },
+        actions: [
+            {
+                icon: 'pen-to-square',
+                label: 'Edit',
+                handler: (row) => handleProjectEdit(row)
+            },
+            {
+                icon: 'arrow-up',
+                label: 'Move to Active',
+                handler: (row) => moveProject(row.id, 'mentor_to_launch_projects', 'active_projects')
+            },
+            {
+                icon: 'chart-line',
+                label: 'Analytics',
+                handler: (row) => showAnalytics(row)
+            },
+            {
+                icon: 'trash-can',
+                label: 'Delete',
+                handler: (row) => handleProjectDelete(row.id, 'mentor')
+            }
+        ],
         pageSize: 10
     };
 
@@ -379,7 +377,8 @@
             // Load active projects
             const { data: activeData, error: activeError } = await supabase
                 .from('active_projects')
-                .select('*');
+                .select('*')
+                .order('created_at', { ascending: false });
             
             if (activeError) throw activeError;
             activeProjects = activeData;
@@ -387,7 +386,8 @@
             // Load mentor to launch projects
             const { data: mentorData, error: mentorError } = await supabase
                 .from('mentor_to_launch_projects')
-                .select('*');
+                .select('*')
+                .order('created_at', { ascending: false });
             
             if (mentorError) throw mentorError;
             mentorToLaunchProjects = mentorData;
@@ -459,6 +459,11 @@
             console.error('Error moving project:', err);
             error = err.message;
         }
+    }
+
+    async function showAnalytics(row) {
+        // TODO: Implement analytics view
+        console.log('Show analytics for:', row);
     }
 
     onMount(loadProjects);

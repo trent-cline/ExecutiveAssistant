@@ -8,6 +8,7 @@
     import EditModal from './EditModal.svelte';
     import TableMilestones from './TableMilestones.svelte';
     import TableFilters from './TableFilters.svelte';
+    import { user } from '$lib/auth';
 
     export let config: DatabaseTableProps;
     export let supabase: any;
@@ -16,7 +17,7 @@
 
     const dispatch = createEventDispatcher();
 
-    let data = initialData;
+    let data = [...initialData];
     let loading = true;
     let error: string | null = null;
     let filteredData: any[] = [];
@@ -148,7 +149,9 @@
     }
 
     async function handleAdd() {
-        editingRow = {};
+        editingRow = {
+            user_id: $user?.id // Set user_id for new records
+        };
         showEditModal = true;
     }
 
@@ -179,22 +182,38 @@
         }
     }
 
-    async function handleSave(formData: any) {
+    async function handleSave(event) {
         try {
-            const isEdit = 'id' in formData;
-            const { data: savedData, error: saveError } = isEdit
-                ? await supabase
-                    .from(config.tableName)
-                    .update(formData)
-                    .eq('id', formData.id)
-                    .select()
-                : await supabase
-                    .from(config.tableName)
-                    .insert([formData])
-                    .select();
+            const formData = event.detail;
+            const isEdit = !!formData.id;
 
-            if (saveError) throw saveError;
-            if (!savedData || savedData.length === 0) throw new Error('No data returned from save operation');
+            // Remove any event-related properties that shouldn't be saved
+            const cleanData = { ...formData };
+            delete cleanData.isTrusted;
+            delete cleanData.timeStamp;
+            delete cleanData.currentTarget;
+            delete cleanData.target;
+            delete cleanData.type;
+
+            // Add timestamps and user_id for new records
+            if (!isEdit) {
+                cleanData.created_at = new Date().toISOString();
+                cleanData.updated_at = new Date().toISOString();
+                cleanData.user_id = cleanData.user_id || $user?.id;
+            } else {
+                cleanData.updated_at = new Date().toISOString();
+            }
+
+            // Save to Supabase
+            const { data: savedData, error } = await supabase
+                .from(config.tableName)
+                .upsert([cleanData], {
+                    onConflict: 'id',
+                    ignoreDuplicates: false
+                })
+                .select();
+
+            if (error) throw error;
 
             // Update local data
             if (isEdit) {
@@ -285,6 +304,38 @@
         const { column, width } = event.detail;
         columnWidths[column] = width;
     }
+
+    async function moveProject(id: string, fromTable: string, toTable: string) {
+        try {
+            const { error: moveError } = await supabase
+                .from(fromTable)
+                .delete()
+                .eq('id', id);
+
+            if (moveError) throw moveError;
+
+            const project = data.find(row => row.id === id);
+            if (!project) return;
+
+            const { data: savedData, error: saveError } = await supabase
+                .from(toTable)
+                .insert([project]);
+
+            if (saveError) throw saveError;
+
+            // Update local data
+            data = data.filter(row => row.id !== id);
+            applyFiltersAndSort();
+            onDataChange(data);
+        } catch (err) {
+            console.error('Error moving project:', err);
+            error = err.message;
+        }
+    }
+
+    function showAnalytics(row: any) {
+        // TO DO: Implement analytics functionality
+    }
 </script>
 
 <div class="database-table" transition:fade>
@@ -374,36 +425,53 @@
                                 </td>
                             {/each}
 
-                            {#if config.features?.edit || config.features?.delete || config.customActions}
+                            {#if config.features?.edit || config.features?.delete || config.actions}
                                 <td class="action-cell">
                                     <div class="action-buttons">
                                         {#if config.features?.edit && config.permissions?.canEdit(row)}
                                             <button 
                                                 class="action-button edit-button" 
                                                 on:click={() => handleEdit(row)}
+                                                title="Edit"
                                             >
-                                                <i class="fas fa-edit"></i>
+                                                <i class="fas fa-pen-to-square"></i>
                                             </button>
                                         {/if}
+
+                                        {#if config.tableName === 'active_projects'}
+                                            <button 
+                                                class="action-button move-button" 
+                                                on:click={() => moveProject(row.id, 'active_projects', 'mentor_to_launch_projects')}
+                                                title="Move to Mentor Projects"
+                                            >
+                                                <i class="fas fa-arrow-down"></i>
+                                            </button>
+                                        {:else if config.tableName === 'mentor_to_launch_projects'}
+                                            <button 
+                                                class="action-button move-button" 
+                                                on:click={() => moveProject(row.id, 'mentor_to_launch_projects', 'active_projects')}
+                                                title="Move to Active Projects"
+                                            >
+                                                <i class="fas fa-arrow-up"></i>
+                                            </button>
+                                        {/if}
+
+                                        <button 
+                                            class="action-button analytics-button" 
+                                            on:click={() => showAnalytics(row)}
+                                            title="Analytics"
+                                        >
+                                            <i class="fas fa-chart-line"></i>
+                                        </button>
                                         
                                         {#if config.features?.delete && config.permissions?.canDelete(row)}
                                             <button 
                                                 class="action-button delete-button"
                                                 on:click={() => handleDelete(row.id)}
+                                                title="Delete"
                                             >
-                                                <i class="fas fa-trash"></i>
+                                                <i class="fas fa-trash-can"></i>
                                             </button>
-                                        {/if}
-
-                                        {#if config.customActions}
-                                            {#each config.customActions as action}
-                                                <button
-                                                    class="action-button custom-button"
-                                                    on:click={() => action.handler(row)}
-                                                >
-                                                    <i class="fas fa-{action.icon || 'cog'}"></i>
-                                                </button>
-                                            {/each}
                                         {/if}
                                     </div>
                                 </td>
@@ -510,27 +578,77 @@
 
     /* Mobile-first styles */
     .action-cell {
-        width: auto; /* Auto width on mobile */
-        text-align: right;
-        padding-right: 0.5rem;
+        padding: 0.5rem !important;
+        white-space: nowrap;
+        width: 1%;
     }
 
     .action-buttons {
         display: flex;
-        gap: 0.25rem; /* Reduced gap for mobile */
+        gap: 0.5rem;
         justify-content: flex-end;
+        align-items: center;
     }
 
     .action-button {
-        padding: 0.375rem; /* Smaller padding for mobile */
-        border-radius: 0.375rem;
-        color: #64748b;
-        transition: all 0.2s;
-        min-width: 32px; /* Ensure touchable size */
-        min-height: 32px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        border: none;
+        border-radius: 0.375rem;
+        background: transparent;
+        color: #4a5568;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .action-button:hover {
+        background: #f7fafc;
+        transform: translateY(-1px);
+    }
+
+    .edit-button:hover {
+        color: #4299e1;
+    }
+
+    .move-button:hover {
+        color: #48bb78;
+    }
+
+    .analytics-button:hover {
+        color: #9f7aea;
+    }
+
+    .delete-button:hover {
+        color: #f56565;
+    }
+
+    .action-button i {
+        font-size: 1rem;
+    }
+
+    /* Add tooltip styles */
+    .action-button {
+        position: relative;
+    }
+
+    .action-button:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.25rem 0.5rem;
+        background: #1a202c;
+        color: white;
+        font-size: 0.75rem;
+        border-radius: 0.25rem;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 10;
     }
 
     .search-box {

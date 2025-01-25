@@ -58,15 +58,10 @@
 
     async function loadProject() {
         try {
-            const { data, error: err } = await supabase
+            const { data: projectData, error: projectError } = await supabase
                 .from('mentor_to_launch_projects')
                 .select(`
                     *,
-                    notes (
-                        id,
-                        content,
-                        created_at
-                    ),
                     milestones (
                         id,
                         title,
@@ -78,8 +73,26 @@
                 .eq('id', $page.params.id)
                 .single();
 
-            if (err) throw err;
-            project = data;
+            if (projectError) throw projectError;
+
+            // Get project notes through junction table
+            const { data: notesData, error: notesError } = await supabase
+                .from('project_notes')
+                .select(`
+                    notes (
+                        id,
+                        content,
+                        created_at
+                    )
+                `)
+                .eq('project_id', $page.params.id);
+
+            if (notesError) throw notesError;
+
+            project = {
+                ...projectData,
+                notes: notesData?.map(n => n.notes) || []
+            };
             loading = false;
         } catch (err) {
             console.error('Error loading project:', err);
@@ -116,18 +129,29 @@
         if (!project || !newNote.trim()) return;
 
         try {
-            const { data, error: err } = await supabase
+            // First insert the note
+            const { data: noteData, error: noteError } = await supabase
                 .from('notes')
                 .insert([{
-                    project_id: project.id,
-                    content: newNote.trim()
+                    content: newNote.trim(),
+                    user_id: $user?.id
                 }])
                 .select()
                 .single();
 
-            if (err) throw err;
+            if (noteError) throw noteError;
 
-            project.notes = [data, ...project.notes];
+            // Then create the relationship in project_notes
+            const { error: relationError } = await supabase
+                .from('project_notes')
+                .insert([{
+                    project_id: project.id,
+                    note_id: noteData.id
+                }]);
+
+            if (relationError) throw relationError;
+
+            project.notes = [noteData, ...project.notes];
             newNote = '';
         } catch (err) {
             console.error('Error adding note:', err);

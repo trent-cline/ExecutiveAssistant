@@ -2,12 +2,19 @@
     import { createEventDispatcher } from 'svelte';
     import { fade, fly } from 'svelte/transition';
     import type { DatabaseTableConfig } from './types';
+    import { user } from '$lib/auth';
 
     export let config: DatabaseTableConfig;
     export let row: any = {};
 
     const dispatch = createEventDispatcher();
-    let formData = { ...row };
+    
+    // Initialize form data with defaults
+    let formData = {
+        ...row,
+        user_id: row.user_id || ($user ? $user.id : null)
+    };
+    
     let errors: Record<string, string> = {};
 
     function validate() {
@@ -34,7 +41,11 @@
 
     function handleSubmit() {
         if (validate()) {
-            dispatch('save', formData);
+            // Clean up any undefined or null values
+            const cleanData = Object.fromEntries(
+                Object.entries(formData).filter(([_, v]) => v != null)
+            );
+            dispatch('save', cleanData);
         }
     }
 </script>
@@ -56,7 +67,7 @@
 
         <form on:submit|preventDefault={handleSubmit}>
             <div class="form-grid">
-                {#each config.columns.filter(col => col.editable !== false) as column}
+                {#each config.columns.filter(col => col.editable !== false && !['created_at', 'updated_at'].includes(col.id)) as column}
                     <div class="form-group">
                         <label for={column.id}>
                             {column.label}
@@ -114,7 +125,7 @@
                     Cancel
                 </button>
                 <button type="submit" class="btn btn-primary">
-                    {row.id ? 'Save Changes' : 'Create'}
+                    {row.id ? 'Save Changes' : 'Add Record'}
                 </button>
             </div>
         </form>
