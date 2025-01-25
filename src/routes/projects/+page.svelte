@@ -20,18 +20,23 @@
         exclusivity: string;
         status: string;
         website: string;
+        description?: string;
+        impact_statement?: string;
+        target_audience?: string;
     }
 
     let activeProjects: Project[] = [];
     let mentorToLaunchProjects: Project[] = [];
+    let proBonoProjects: Project[] = [];
     let loading = true;
     let error = '';
     let showNewProjectModal = false;
-    let selectedProjectType: 'active' | 'mentor' = 'active';
+    let selectedProjectType: 'active' | 'mentor' | 'probono' = 'active';
 
     const projectTypes = [
         { id: 'active', label: 'Active Projects', description: 'Web-based app development projects' },
-        { id: 'mentor', label: 'Mentor To Launch', description: 'Small trades business launch projects' }
+        { id: 'mentor', label: 'Mentor To Launch', description: 'Small trades business launch projects' },
+        { id: 'probono', label: 'Pro Bono', description: 'Non-profit and social impact projects' }
     ];
 
     const activeColumns: Column[] = [
@@ -364,6 +369,76 @@
         pageSize: 10
     };
 
+    const proBonoConfig = {
+        tableName: 'pro_bono_projects',
+        columns: [
+            {
+                id: 'company_name',
+                label: 'Organization',
+                width: '200px',
+                sortable: true,
+                template: (value, row) => row && row.id ? `
+                    <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
+                ` : value || ''
+            },
+            {
+                id: 'partner_name',
+                label: 'Contact',
+                width: '150px',
+                sortable: true
+            },
+            {
+                id: 'industry',
+                label: 'Focus Area',
+                width: '150px',
+                sortable: true
+            },
+            {
+                id: 'target_audience',
+                label: 'Target Audience',
+                width: '150px',
+                sortable: true
+            },
+            {
+                id: 'status',
+                label: 'Status',
+                width: '120px',
+                sortable: true,
+                template: (value) => `<span class="status-badge ${value?.toLowerCase()}">${value || ''}</span>`
+            },
+            {
+                id: 'website',
+                label: 'Website',
+                width: '100px',
+                template: (value) => value ? `
+                    <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
+                        <i class="fas fa-arrow-up-right-from-square"></i>
+                    </a>
+                ` : '<span class="no-website">-</span>'
+            },
+            {
+                id: 'milestones',
+                label: 'Milestones',
+                type: 'milestones',
+                width: '200px'
+            }
+        ],
+        features: {
+            add: true,
+            edit: true,
+            delete: true,
+            search: true,
+            filter: true,
+            sort: true,
+            pagination: true,
+            select: true
+        },
+        permissions: {
+            canEdit: (row: any) => true,
+            canDelete: (row: any) => true
+        }
+    };
+
     async function loadProjects() {
         if (!$user) {
             goto('/login');
@@ -392,6 +467,15 @@
             if (mentorError) throw mentorError;
             mentorToLaunchProjects = mentorData;
 
+            // Load pro bono projects
+            const { data: proBonoData, error: proBonoError } = await supabase
+                .from('pro_bono_projects')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (proBonoError) throw proBonoError;
+            proBonoProjects = proBonoData;
+
         } catch (err) {
             console.error('Error loading projects:', err);
             error = err.message;
@@ -416,6 +500,9 @@
             case 'mentor':
                 mentorToLaunchProjects = updatedData;
                 break;
+            case 'probono':
+                proBonoProjects = updatedData;
+                break;
         }
     }
 
@@ -423,7 +510,8 @@
         const { row } = event.detail;
         handleDataChange(
             selectedProjectType === 'active' ? activeProjects : 
-            mentorToLaunchProjects
+            selectedProjectType === 'mentor' ? mentorToLaunchProjects : 
+            proBonoProjects
         );
     }
 
@@ -477,7 +565,7 @@
         };
     }
 
-    function handleAddProject(type: 'active' | 'mentor') {
+    function handleAddProject(type: 'active' | 'mentor' | 'probono') {
         selectedProjectType = type;
         showNewProjectModal = true;
     }
@@ -516,6 +604,14 @@
                         config={mentorToLaunchConfig}
                         {supabase}
                         initialData={mentorToLaunchProjects}
+                        onDataChange={(data) => handleDataChange(data)}
+                        on:edit={handleProjectEdit}
+                    />
+                {:else if projectType.id === 'probono'}
+                    <DatabaseTable
+                        config={proBonoConfig}
+                        {supabase}
+                        initialData={proBonoProjects}
                         onDataChange={(data) => handleDataChange(data)}
                         on:edit={handleProjectEdit}
                     />

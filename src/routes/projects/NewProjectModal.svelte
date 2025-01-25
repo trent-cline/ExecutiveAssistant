@@ -5,7 +5,7 @@
     import { fade, fly } from 'svelte/transition';
 
     export let show = false;
-    export let projectType: 'active' | 'static' | 'mentor' = 'active';
+    export let projectType: 'active' | 'static' | 'mentor' | 'probono' = 'active';
 
     const dispatch = createEventDispatcher();
 
@@ -13,27 +13,23 @@
         company_name: '',
         partner_name: '',
         industry: '',
-        status: 'Active',
-        website: '',
-        // Active project specific fields
-        ownership: null as number | null,
+        ownership: projectType === 'active' ? 0 : null,
         development_revenue: '',
         additional_revenue: '',
-        // Static website specific fields
+        exclusivity: '',
+        status: 'Active',
+        website: '',
+        description: '',
+        impact_statement: '',
+        target_audience: '',
         hosting_provider: '',
         domain_provider: '',
         monthly_cost: null as number | null,
-        // Mentor to Launch specific fields
         sample_website: ''
     };
 
     let loading = false;
     let error = '';
-
-    function closeModal() {
-        show = false;
-        dispatch('close');
-    }
 
     async function handleSubmit() {
         if (!$user) {
@@ -67,7 +63,8 @@
                         ...data,
                         ownership: formData.ownership,
                         development_revenue: formData.development_revenue,
-                        additional_revenue: formData.additional_revenue
+                        additional_revenue: formData.additional_revenue,
+                        exclusivity: formData.exclusivity
                     };
                     break;
                 case 'static':
@@ -84,6 +81,15 @@
                     data = {
                         ...data,
                         sample_website: formData.sample_website
+                    };
+                    break;
+                case 'probono':
+                    table = 'pro_bono_projects';
+                    data = {
+                        ...data,
+                        description: formData.description,
+                        impact_statement: formData.impact_statement,
+                        target_audience: formData.target_audience
                     };
                     break;
             }
@@ -103,6 +109,11 @@
             loading = false;
         }
     }
+
+    function closeModal() {
+        show = false;
+        dispatch('close');
+    }
 </script>
 
 {#if show}
@@ -113,7 +124,7 @@
             in:fly="{{ y: 20, duration: 300 }}"
         >
             <div class="modal-header">
-                <h2>Add New {projectType === 'active' ? 'Active' : projectType === 'static' ? 'Static Website' : 'Mentor to Launch'} Project</h2>
+                <h2>Add New {projectType === 'active' ? 'Active' : projectType === 'static' ? 'Static Website' : projectType === 'mentor' ? 'Mentor to Launch' : 'Pro Bono'} Project</h2>
                 <button 
                     class="close-button" 
                     on:click={closeModal}
@@ -127,7 +138,10 @@
                 <!-- Common Fields -->
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="company_name">Company Name *</label>
+                        <label for="company_name">
+                            {projectType === 'probono' ? 'Organization Name' : 'Company Name'}
+                            <span class="required">*</span>
+                        </label>
                         <input
                             id="company_name"
                             bind:value={formData.company_name}
@@ -137,17 +151,20 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="partner_name">Partner Name *</label>
+                        <label for="partner_name">
+                            {projectType === 'probono' ? 'Contact Name' : 'Partner Name'}
+                        </label>
                         <input
                             id="partner_name"
                             bind:value={formData.partner_name}
                             placeholder="Enter partner name"
-                            required
                         />
                     </div>
 
                     <div class="form-group">
-                        <label for="industry">Industry</label>
+                        <label for="industry">
+                            {projectType === 'probono' ? 'Focus Area' : 'Industry'}
+                        </label>
                         <input
                             id="industry"
                             bind:value={formData.industry}
@@ -185,6 +202,15 @@
                                 min="0"
                                 max="100"
                                 placeholder="Enter ownership percentage"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exclusivity">Exclusivity</label>
+                            <input
+                                id="exclusivity"
+                                bind:value={formData.exclusivity}
+                                placeholder="Enter exclusivity"
                             />
                         </div>
 
@@ -249,6 +275,37 @@
                                 type="url"
                                 bind:value={formData.sample_website}
                                 placeholder="Enter sample website URL"
+                            />
+                        </div>
+                    {/if}
+
+                    <!-- Pro Bono Fields -->
+                    {#if projectType === 'probono'}
+                        <div class="form-group">
+                            <label for="description">Project Description</label>
+                            <textarea
+                                id="description"
+                                bind:value={formData.description}
+                                rows="3"
+                            ></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="impact_statement">Impact Statement</label>
+                            <textarea
+                                id="impact_statement"
+                                bind:value={formData.impact_statement}
+                                rows="3"
+                                placeholder="How will this project make a difference?"
+                            ></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="target_audience">Target Audience</label>
+                            <input
+                                id="target_audience"
+                                bind:value={formData.target_audience}
+                                placeholder="Who will benefit from this project?"
                             />
                         </div>
                     {/if}
@@ -350,7 +407,7 @@
         color: #4a5568;
     }
 
-    input, select {
+    input, textarea {
         padding: 0.5rem;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
