@@ -57,22 +57,25 @@
 <style>
     .milestone-container {
         display: flex;
-        gap: 0.75rem;
+        gap: 0.25rem;
         align-items: center;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-        background: rgba(255, 255, 255, 0.05);
+        padding: 0;
+        border-radius: 0.25rem;
+        background: none;
     }
 
     .milestone-button {
         background: none;
         border: none;
         cursor: pointer;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
+        padding: 0.125rem;
+        border-radius: 0.25rem;
         transition: all 0.2s ease-in-out;
         position: relative;
         filter: grayscale(100%) opacity(0.5);
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
     }
 
     .milestone-button:hover {
@@ -86,8 +89,9 @@
     }
 
     .milestone-icon {
-        font-size: 1.25rem;
+        font-size: 1rem;
         transition: all 0.2s ease-in-out;
+        line-height: 1;
     }
 
     /* Tooltip styles */

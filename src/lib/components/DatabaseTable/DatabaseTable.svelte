@@ -27,6 +27,7 @@
     let showEditModal = false;
     let editingRow: any = null;
     let selectedRows = new Set<string>();
+    let columnWidths: { [key: string]: number } = {};
 
     $: pageSize = config.pageSize || 10;
     $: totalPages = Math.ceil(filteredData.length / pageSize);
@@ -279,6 +280,11 @@
         }
         selectedRows = selectedRows;
     }
+
+    function handleColumnResize(event: CustomEvent) {
+        const { column, width } = event.detail;
+        columnWidths[column] = width;
+    }
 </script>
 
 <div class="database-table" transition:fade>
@@ -292,64 +298,41 @@
         <div class="table-toolbar">
             {#if config.features?.search}
                 <div class="search-box">
-                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
                     <input
                         type="text"
-                        bind:value={searchTerm}
-                        on:input={() => applyFiltersAndSort()}
                         placeholder="Search..."
+                        bind:value={searchTerm}
+                        on:input={applyFiltersAndSort}
                     />
                 </div>
             {/if}
-
-            {#if config.features?.filter}
-                <TableFilters
-                    columns={config.columns.filter(col => col.filterable)}
-                    {filterState}
-                    on:filter={({ detail }) => {
-                        filterState = detail;
-                        applyFiltersAndSort();
-                    }}
-                />
-            {/if}
-
+            
             <div class="toolbar-actions">
                 {#if config.features?.add && config.permissions?.canAdd}
                     <button class="btn btn-primary" on:click={handleAdd}>
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add New
-                    </button>
-                {/if}
-
-                {#if config.features?.export}
-                    <button class="btn btn-secondary" on:click={handleExport}>
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Export
+                        <i class="fas fa-plus"></i> Add New
                     </button>
                 {/if}
             </div>
         </div>
 
         <div class="table-wrapper">
-            <table class="min-w-full">
+            <table class="min-w-full table-fixed">
                 <TableHeader
                     columns={config.columns}
-                    {sortState}
+                    sortState={sortState}
+                    config={config}
                     selectable={config.features?.select}
-                    allSelected={selectedRows.size === paginatedData.length}
-                    on:sort={handleSort}
+                    onSort={handleSort}
                     on:selectAll={handleSelectAll}
+                    on:columnResize={handleColumnResize}
                 />
-                
                 <tbody>
                     {#each paginatedData as row (row.id)}
-                        <tr transition:fade|local>
+                        <tr
+                            transition:fade|local
+                            class:selected={selectedRows.has(row.id)}
+                        >
                             {#if config.features?.select}
                                 <td class="w-10">
                                     <input
@@ -361,70 +344,68 @@
                             {/if}
                             
                             {#each config.columns as column}
-                                {#if column.type === 'milestones'}
-                                    <td>
+                                <td style={`width: ${columnWidths[column.id] || column.width || 'auto'}`}>
+                                    {#if column.type === 'milestones'}
                                         <TableMilestones
                                             row={row}
                                             tableName={config.tableName}
-                                            {supabase}
+                                            supabase={supabase}
                                             on:milestoneUpdate={handleMilestoneUpdate}
                                             on:error={(e) => error = e.detail.message}
                                         />
-                                    </td>
-                                {:else}
-                                    <td>
+                                    {:else}
                                         {#if column.template}
                                             {@html column.template(row[column.id], row)}
                                         {:else if column.type === 'url' && row[column.id]}
-                                            <a 
-                                                href={row[column.id]} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer" 
-                                                class="text-blue-600 hover:text-blue-900"
-                                            >
+                                            <a href={row[column.id]} target="_blank" rel="noopener noreferrer">
                                                 {row[column.id]}
                                             </a>
-                                        {:else if column.type === 'currency' && row[column.id] != null}
-                                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(row[column.id])}
-                                        {:else if column.type === 'percentage' && row[column.id] != null}
-                                            {row[column.id]}%
+                                        {:else if column.type === 'currency'}
+                                            {new Intl.NumberFormat('en-US', {
+                                                style: 'currency',
+                                                currency: 'USD'
+                                            }).format(row[column.id] || 0)}
+                                        {:else if column.type === 'percentage'}
+                                            {(row[column.id] || 0).toFixed(1)}%
                                         {:else}
                                             {row[column.id]}
                                         {/if}
-                                    </td>
-                                {/if}
+                                    {/if}
+                                </td>
                             {/each}
 
                             {#if config.features?.edit || config.features?.delete || config.customActions}
                                 <td class="action-cell">
-                                    {#if config.features?.edit && config.permissions?.canEdit(row)}
-                                        <button class="action-button edit-button" on:click={() => handleEdit(row)}>
-                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-1.073-5.73-4.412 4.412-4.412-4.412 4.412-4.412 4.412 4.412-1.073-1.073-1.073 1.073z" />
-                                            </svg>
-                                        </button>
-                                    {/if}
-                                    
-                                    {#if config.features?.delete && config.permissions?.canDelete(row)}
-                                        <button class="action-button delete-button" on:click={() => handleDelete(row.id)}>
-                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    {/if}
-
-                                    {#if config.customActions}
-                                        {#each config.customActions as action}
+                                    <div class="action-buttons">
+                                        {#if config.features?.edit && config.permissions?.canEdit(row)}
                                             <button 
-                                                class="action-button move-button"
-                                                on:click={() => action.handler(row)}
+                                                class="action-button edit-button" 
+                                                on:click={() => handleEdit(row)}
                                             >
-                                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4H9m5 8V5a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2h-2a2 2 0 01-2-2V9" />
-                                                </svg>
+                                                <i class="fas fa-edit"></i>
                                             </button>
-                                        {/each}
-                                    {/if}
+                                        {/if}
+                                        
+                                        {#if config.features?.delete && config.permissions?.canDelete(row)}
+                                            <button 
+                                                class="action-button delete-button"
+                                                on:click={() => handleDelete(row.id)}
+                                            >
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        {/if}
+
+                                        {#if config.customActions}
+                                            {#each config.customActions as action}
+                                                <button
+                                                    class="action-button custom-button"
+                                                    on:click={() => action.handler(row)}
+                                                >
+                                                    <i class="fas fa-{action.icon || 'cog'}"></i>
+                                                </button>
+                                            {/each}
+                                        {/if}
+                                    </div>
                                 </td>
                             {/if}
                         </tr>
@@ -436,37 +417,35 @@
         {#if config.features?.pagination}
             <div class="pagination">
                 <button 
-                    class="pagination-btn"
+                    class="page-button"
                     disabled={currentPage === 1}
                     on:click={() => currentPage = 1}
                 >
-                    First
+                    <i class="fas fa-angle-double-left"></i>
                 </button>
                 <button 
-                    class="pagination-btn"
+                    class="page-button"
                     disabled={currentPage === 1}
                     on:click={() => currentPage--}
                 >
-                    Previous
+                    <i class="fas fa-angle-left"></i>
                 </button>
-                
                 <span class="page-info">
                     Page {currentPage} of {totalPages}
                 </span>
-                
                 <button 
-                    class="pagination-btn"
+                    class="page-button"
                     disabled={currentPage === totalPages}
                     on:click={() => currentPage++}
                 >
-                    Next
+                    <i class="fas fa-angle-right"></i>
                 </button>
                 <button 
-                    class="pagination-btn"
+                    class="page-button"
                     disabled={currentPage === totalPages}
                     on:click={() => currentPage = totalPages}
                 >
-                    Last
+                    <i class="fas fa-angle-double-right"></i>
                 </button>
             </div>
         {/if}
@@ -474,7 +453,7 @@
 
     {#if showEditModal}
         <EditModal
-            {config}
+            config={config}
             row={editingRow}
             on:save={handleSave}
             on:close={() => showEditModal = false}
@@ -487,298 +466,177 @@
         width: 100%;
         background: white;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .table-container {
         overflow: hidden;
+        border-radius: 8px;
     }
 
-    /* Mobile-first toolbar */
-    .table-toolbar {
-        display: flex;
-        flex-direction: column;
-        padding: 1rem;
+    .table-wrapper {
+        overflow-x: auto;
+        position: relative;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+
+    table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.875rem; /* Smaller base font size for mobile */
+    }
+
+    .table-fixed {
+        table-layout: fixed;
+    }
+
+    tr {
+        background: white;
+        transition: background-color 0.2s;
+    }
+
+    tr:hover {
+        background-color: #f8fafc;
+    }
+
+    td {
+        padding: 0.5rem; /* Reduced padding for mobile */
         border-bottom: 1px solid #e2e8f0;
-        gap: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    @media (min-width: 768px) {
-        .table-toolbar {
-            flex-direction: row;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+    /* Mobile-first styles */
+    .action-cell {
+        width: auto; /* Auto width on mobile */
+        text-align: right;
+        padding-right: 0.5rem;
     }
 
-    /* Mobile-first search box */
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem; /* Reduced gap for mobile */
+        justify-content: flex-end;
+    }
+
+    .action-button {
+        padding: 0.375rem; /* Smaller padding for mobile */
+        border-radius: 0.375rem;
+        color: #64748b;
+        transition: all 0.2s;
+        min-width: 32px; /* Ensure touchable size */
+        min-height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     .search-box {
         position: relative;
-        width: 100%;
-    }
-
-    @media (min-width: 768px) {
-        .search-box {
-            flex: 1;
-            min-width: auto;
-            max-width: 300px;
-        }
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 1.25rem;
-        height: 1.25rem;
-        color: #64748b;
+        margin-bottom: 0.75rem;
     }
 
     .search-box input {
         width: 100%;
-        padding: 0.75rem 1rem;
-        padding-left: 2.5rem;
+        padding: 0.5rem;
         border: 1px solid #e2e8f0;
         border-radius: 0.375rem;
-        font-size: 1rem;
+        font-size: 0.875rem;
     }
 
-    /* Mobile-first action buttons */
-    .toolbar-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 0.75rem;
-        width: 100%;
-    }
-
-    @media (min-width: 768px) {
-        .toolbar-actions {
-            display: flex;
-            width: auto;
-        }
-    }
-
-    /* Mobile-first table container */
-    .table-container {
-        position: relative;
-    }
-
-    /* Card view for mobile */
-    @media (max-width: 767px) {
-        table, thead, tbody, tr {
-            display: block;
-        }
-
-        thead {
-            display: none;
-        }
-
-        tr {
-            margin-bottom: 1rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            padding: 1rem;
-        }
-
-        td {
-            display: grid;
-            grid-template-columns: 120px 1fr;
-            padding: 0.5rem 0;
-            border: none;
-        }
-
-        td::before {
-            content: attr(data-label);
-            font-weight: 500;
-            color: #475569;
-        }
-    }
-
-    /* Desktop table styles */
-    @media (min-width: 768px) {
-        .table-container {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-
-        :global(.database-table td),
-        :global(.database-table th) {
-            padding: 0.75rem 1rem;
-            border: 1px solid #e2e8f0;
-            border-left: none;
-        }
-
-        :global(.database-table td:first-child),
-        :global(.database-table th:first-child) {
-            border-left: 1px solid #e2e8f0;
-        }
-
-        :global(.database-table tr) {
-            border-bottom: 1px solid #e2e8f0;
-            transition: background-color 0.2s;
-        }
-
-        :global(.database-table tbody tr:hover) {
-            background-color: #f8fafc;
-        }
-
-        :global(.database-table th) {
-            background-color: #f8fafc;
-            font-weight: 500;
-            color: #475569;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            border-bottom: 2px solid #e2e8f0;
-        }
-
-        /* Action column styles */
-        :global(.action-cell) {
-            padding: 0.5rem !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.25rem;
-            min-width: 120px;
-        }
-
-        :global(.action-button) {
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-            border: none;
-            background: none;
-            color: #64748b;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        :global(.action-button:hover) {
-            color: #1e293b;
-            background-color: #f1f5f9;
-        }
-
-        :global(.edit-button:hover) {
-            color: #3b82f6;
-        }
-
-        :global(.delete-button:hover) {
-            color: #ef4444;
-        }
-
-        :global(.move-button:hover) {
-            color: #8b5cf6;
-        }
-    }
-
-    /* Mobile-first pagination */
     .pagination {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        padding: 1rem;
-        gap: 0.75rem;
+        justify-content: center;
+        gap: 0.25rem; /* Reduced gap for mobile */
+        padding: 0.75rem;
+        border-top: 1px solid #e2e8f0;
+        flex-wrap: wrap; /* Allow wrapping on very small screens */
     }
 
-    @media (min-width: 768px) {
-        .pagination {
-            flex-direction: row;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-    }
-
-    .page-info {
-        margin: 0.5rem;
+    .page-button {
+        padding: 0.375rem;
+        border-radius: 0.375rem;
         color: #64748b;
-        font-size: 1rem;
-    }
-
-    /* Mobile-friendly buttons */
-    .btn {
-        padding: 0.75rem 1rem;
-        border-radius: 0.5rem;
-        font-size: 1rem;
-        font-weight: 500;
-        cursor: pointer;
+        transition: all 0.2s;
+        min-width: 32px; /* Ensure touchable size */
+        min-height: 32px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        transition: all 0.2s;
-        min-height: 44px; /* Minimum touch target size */
-        width: 100%;
     }
 
-    @media (min-width: 768px) {
+    .page-info {
+        color: #64748b;
+        font-size: 0.75rem; /* Smaller font for mobile */
+        padding: 0 0.5rem;
+    }
+
+    .toolbar-actions {
+        display: flex;
+        gap: 0.25rem;
+        margin-bottom: 0.75rem;
+        flex-wrap: wrap; /* Allow wrapping on mobile */
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    /* Tablet and desktop styles */
+    @media (min-width: 640px) {
+        table {
+            font-size: 1rem;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+        }
+
+        .action-cell {
+            width: 150px;
+        }
+
+        .action-buttons {
+            gap: 0.5rem;
+        }
+
+        .action-button {
+            padding: 0.5rem;
+        }
+
+        .pagination {
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+
+        .page-info {
+            font-size: 0.875rem;
+        }
+
+        .toolbar-actions {
+            gap: 0.5rem;
+        }
+
         .btn {
-            width: auto;
-            min-height: 36px;
             padding: 0.5rem 1rem;
         }
     }
 
-    .btn-icon {
-        padding: 0.75rem;
-    }
-
-    .btn-primary {
-        background-color: #3b82f6;
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background-color: #2563eb;
-    }
-
-    .btn-secondary {
-        background-color: #e2e8f0;
-        color: #475569;
-    }
-
-    .btn-secondary:hover {
-        background-color: #cbd5e1;
-    }
-
-    .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    /* Global styles */
-    :global(.database-table td) {
-        padding: 0.75rem 1rem;
-    }
-
-    :global(.database-table th) {
-        padding: 0.75rem 1rem;
-        text-align: left;
-        font-weight: 500;
-        color: #475569;
-        background-color: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-    }
-
-    :global(.w-4) {
-        width: 1.25rem;
-    }
-
-    :global(.h-4) {
-        height: 1.25rem;
-    }
-
-    /* Error message */
-    .error-message {
-        padding: 1rem;
-        background-color: #fee2e2;
-        color: #dc2626;
-        margin: 1rem;
-        border-radius: 0.5rem;
-        font-size: 1rem;
+    /* Optional: Hide less important columns on mobile */
+    @media (max-width: 639px) {
+        .hide-on-mobile {
+            display: none;
+        }
     }
 </style>

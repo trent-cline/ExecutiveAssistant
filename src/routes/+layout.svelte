@@ -14,7 +14,7 @@
 
     // Protected routes that require authentication
     const protectedRoutes = [
-        '/brain-inbox',
+        '/table',
         '/goals',
         '/shopping-list',
         '/active-projects',
@@ -23,15 +23,17 @@
     ];
 
     onMount(() => {
-        isMobile = window.innerWidth < 768;
-        window.addEventListener('resize', () => {
-            isMobile = window.innerWidth < 768;
+        const unsubscribe = user.subscribe(($user) => {
+            if ($user && $page.url.pathname === '/') {
+                goto('/brain-inbox');
+            } else if (!$user && protectedRoutes.includes($page.url.pathname)) {
+                goto('/');
+            }
         });
 
-        // Check authentication for protected routes
-        if (browser && protectedRoutes.includes($page.url.pathname) && !$user) {
-            goto('/');
-        }
+        return () => {
+            unsubscribe();
+        };
     });
 
     // Cleanup

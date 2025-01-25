@@ -64,23 +64,25 @@
     </div>
 
     <div class="nav-links">
-        <a 
-            href="/" 
-            class:active={$page.url.pathname === '/'} 
-            on:click={() => isMobile && (isOpen = false)}
-        >
-            <i class="fas fa-microphone" aria-hidden="true"></i>
-            Voice Notes
-        </a>
+        {#if !$user}
+            <a 
+                href="/" 
+                class:active={$page.url.pathname === '/'} 
+                on:click={() => isMobile && (isOpen = false)}
+            >
+                <i class="fas fa-microphone" aria-hidden="true"></i>
+                Voice Notes
+            </a>
+        {/if}
 
         {#if $user}
             <a 
-                href="/notes" 
-                class:active={$page.url.pathname === '/notes'} 
+                href="/table" 
+                class:active={$page.url.pathname === '/table'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-pen" aria-hidden="true"></i>
-                My Notes
+                <i class="fas fa-brain" aria-hidden="true"></i>
+                Brain Inbox
             </a>
 
             <a 
@@ -90,15 +92,6 @@
             >
                 <i class="fas fa-envelope" aria-hidden="true"></i>
                 Private Notes
-            </a>
-
-            <a 
-                href="/brain-inbox" 
-                class:active={$page.url.pathname === '/brain-inbox'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-brain" aria-hidden="true"></i>
-                Brain Inbox
             </a>
 
             <a 

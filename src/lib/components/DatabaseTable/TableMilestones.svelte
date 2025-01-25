@@ -52,6 +52,8 @@
 
 <style>
     .milestone-cell {
-        padding: 0.5rem;
+        padding: 0;
+        display: flex;
+        align-items: center;
     }
 </style>

@@ -23,16 +23,14 @@
     }
 
     let activeProjects: Project[] = [];
-    let staticWebsiteProjects: Project[] = [];
     let mentorToLaunchProjects: Project[] = [];
     let loading = true;
     let error = '';
     let showNewProjectModal = false;
-    let selectedProjectType: 'active' | 'static' | 'mentor' = 'active';
+    let selectedProjectType: 'active' | 'mentor' = 'active';
 
     const projectTypes = [
         { id: 'active', label: 'Active Projects', description: 'Web-based app development projects' },
-        { id: 'static', label: 'Static Websites', description: 'Static website development projects' },
         { id: 'mentor', label: 'Mentor To Launch', description: 'Small trades business launch projects' }
     ];
 
@@ -73,28 +71,6 @@
             width: '150px',
             sortable: true,
             template: (value) => value || ''
-        },
-        {
-            id: 'additional_revenue',
-            label: 'Additional Revenue',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
-        },
-        {
-            id: 'status',
-            label: 'Status',
-            width: '120px',
-            filterOptions: ['Active', 'On Hold', 'Completed'],
-            template: (value) => {
-                if (!value) return '';
-                const colors = {
-                    'Active': '#28a745',
-                    'On Hold': '#ffc107',
-                    'Completed': '#6c757d'
-                };
-                return `<span style="color: ${colors[value] || '#6c757d'}">${value}</span>`;
-            }
         },
         {
             id: 'website',
@@ -214,144 +190,6 @@
         }
     ];
 
-    const staticColumns: Column[] = [
-        { 
-            id: 'company_name',
-            label: 'Company',
-            width: '200px',
-            sortable: true,
-            template: (value, row) => row && row.id ? `
-                <a href="/projects/static/${row.id}" class="company-link">${value || ''}</a>
-            ` : value || ''
-        },
-        { 
-            id: 'partner_name',
-            label: 'Partner',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
-        },
-        { 
-            id: 'industry',
-            label: 'Industry',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
-        },
-        {
-            id: 'website',
-            label: 'Website',
-            width: '150px',
-            template: (value) => value ? `
-                <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
-                    <i class="fas fa-external-link-alt"></i> Visit
-                </a>
-            ` : '<span class="no-website">-</span>'
-        },
-        {
-            id: 'status',
-            label: 'Status',
-            width: '120px',
-            template: (value) => `<span class="status status-${value.toLowerCase()}">${value}</span>`
-        },
-        {
-            id: 'actions',
-            label: 'Actions',
-            width: '150px',
-            template: (_, row) => `
-                <div class="actions">
-                    <a href="/projects/${row.id}" class="view-link">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                    <button class="move-btn" data-id="${row.id}">
-                        <i class="fas fa-arrows-alt"></i>
-                    </button>
-                </div>
-            `
-        }
-    ];
-
-    const staticWebsiteConfig = {
-        tableName: 'static_website_projects',
-        columns: [
-            {
-                id: 'company_name',
-                label: 'Company',
-                width: '200px',
-                sortable: true,
-                required: true,
-                type: 'text',
-                template: (value, row) => row && row.id ? `
-                    <a href="/projects/static/${row.id}" class="company-link">${value || ''}</a>
-                ` : value || ''
-            },
-            {
-                id: 'partner_name',
-                label: 'Partner',
-                width: '150px',
-                sortable: true,
-                required: true
-            },
-            {
-                id: 'industry',
-                label: 'Industry',
-                width: '150px',
-                sortable: true,
-                filterable: true
-            },
-            {
-                id: 'hosting_provider',
-                label: 'Hosting',
-                width: '150px',
-                sortable: true,
-                filterable: true
-            },
-            {
-                id: 'domain_provider',
-                label: 'Domain',
-                width: '150px',
-                sortable: true
-            },
-            {
-                id: 'monthly_cost',
-                label: 'Monthly Cost',
-                width: '120px',
-                sortable: true,
-                type: 'currency'
-            },
-            {
-                id: 'website',
-                label: 'Website',
-                width: '150px',
-                type: 'url'
-            },
-            {
-                id: 'status',
-                label: 'Status',
-                width: '120px',
-                type: 'select',
-                filterable: true,
-                filterOptions: ['Active', 'On Hold', 'Completed']
-            }
-        ],
-        features: {
-            search: true,
-            filter: true,
-            sort: true,
-            pagination: true,
-            add: true,
-            edit: true,
-            delete: true,
-            export: true
-        },
-        permissions: {
-            canAdd: true,
-            canEdit: (row) => true,
-            canDelete: (row) => true
-        },
-        pageSize: 10
-    };
-
     const activeProjectsConfig = {
         tableName: 'active_projects',
         columns: [
@@ -427,11 +265,6 @@
         },
         customActions: [
             {
-                id: 'move_to_static',
-                label: 'Move to Static',
-                handler: (row) => moveProject(row.id, 'active_projects', 'static_website_projects')
-            },
-            {
                 id: 'move_to_mentor',
                 label: 'Move to Mentor',
                 handler: (row) => moveProject(row.id, 'active_projects', 'mentor_to_launch_projects')
@@ -439,31 +272,130 @@
         ]
     };
 
+    const mentorToLaunchConfig = {
+        tableName: 'mentor_to_launch_projects',
+        columns: [
+            {
+                id: 'company_name',
+                label: 'Business',
+                width: '200px',
+                sortable: true,
+                required: true,
+                type: 'text',
+                template: (value, row) => row && row.id ? `
+                    <a href="/projects/mentor/${row.id}" class="company-link">${value || ''}</a>
+                ` : value || ''
+            },
+            {
+                id: 'owner_name',
+                label: 'Owner',
+                width: '150px',
+                sortable: true,
+                required: true
+            },
+            {
+                id: 'industry',
+                label: 'Industry',
+                width: '150px',
+                sortable: true,
+                filterable: true
+            },
+            {
+                id: 'target_market',
+                label: 'Target Market',
+                width: '200px',
+                sortable: true,
+                filterable: true
+            },
+            {
+                id: 'revenue_model',
+                label: 'Revenue Model',
+                width: '150px',
+                sortable: true,
+                filterable: true
+            },
+            {
+                id: 'launch_status',
+                label: 'Status',
+                width: '120px',
+                type: 'select',
+                filterable: true,
+                filterOptions: ['Planning', 'Building', 'Marketing', 'Operating'],
+                template: (value) => {
+                    const colors = {
+                        'Planning': '#6c757d',
+                        'Building': '#007bff',
+                        'Marketing': '#ffc107',
+                        'Operating': '#28a745'
+                    };
+                    return `<span class="status-badge" style="background-color: ${colors[value]}">${value}</span>`;
+                }
+            },
+            {
+                id: 'website',
+                label: 'Website',
+                width: '150px',
+                type: 'url',
+                template: (value) => value ? `
+                    <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
+                        <i class="fas fa-external-link-alt"></i> Visit
+                    </a>
+                ` : '<span class="no-website">-</span>'
+            },
+            {
+                id: 'milestones',
+                label: 'Milestones',
+                width: '150px',
+                type: 'milestones'
+            }
+        ],
+        features: {
+            search: true,
+            filter: true,
+            sort: true,
+            pagination: true,
+            add: true,
+            edit: true,
+            delete: true
+        },
+        permissions: {
+            canAdd: true,
+            canEdit: (row) => true,
+            canDelete: (row) => true
+        },
+        pageSize: 10
+    };
+
     async function loadProjects() {
         if (!$user) {
             goto('/login');
             return;
         }
-        
+
         try {
             loading = true;
-            const [activeRes, staticRes, mentorRes] = await Promise.all([
-                supabase.from('active_projects').select('*'),
-                supabase.from('static_website_projects').select('*'),
-                supabase.from('mentor_to_launch_projects').select('*')
-            ]);
+            error = null;
 
-            if (activeRes.error) throw activeRes.error;
-            if (staticRes.error) throw staticRes.error;
-            if (mentorRes.error) throw mentorRes.error;
+            // Load active projects
+            const { data: activeData, error: activeError } = await supabase
+                .from('active_projects')
+                .select('*');
+            
+            if (activeError) throw activeError;
+            activeProjects = activeData;
 
-            activeProjects = activeRes.data || [];
-            staticWebsiteProjects = staticRes.data || [];
-            mentorToLaunchProjects = mentorRes.data || [];
-            loading = false;
+            // Load mentor to launch projects
+            const { data: mentorData, error: mentorError } = await supabase
+                .from('mentor_to_launch_projects')
+                .select('*');
+            
+            if (mentorError) throw mentorError;
+            mentorToLaunchProjects = mentorData;
+
         } catch (err) {
             console.error('Error loading projects:', err);
             error = err.message;
+        } finally {
             loading = false;
         }
     }
@@ -481,9 +413,6 @@
             case 'active':
                 activeProjects = updatedData;
                 break;
-            case 'static':
-                staticWebsiteProjects = updatedData;
-                break;
             case 'mentor':
                 mentorToLaunchProjects = updatedData;
                 break;
@@ -494,15 +423,14 @@
         const { row } = event.detail;
         handleDataChange(
             selectedProjectType === 'active' ? activeProjects : 
-            selectedProjectType === 'static' ? staticWebsiteProjects :
             mentorToLaunchProjects
         );
     }
 
-    async function moveProject(projectId: string, fromTable: string, toTable: string) {
+    async function moveProject(projectId: string, fromTable: string, targetTable: string) {
         try {
-            // Get the project data
-            const { data: project, error: fetchError } = await supabase
+            // Get project data
+            const { data: projectData, error: fetchError } = await supabase
                 .from(fromTable)
                 .select('*')
                 .eq('id', projectId)
@@ -510,12 +438,9 @@
 
             if (fetchError) throw fetchError;
 
-            // Remove id to create new record in target table
-            const { id, created_at, ...projectData } = project;
-
-            // Insert into new table
+            // Insert into target table
             const { error: insertError } = await supabase
-                .from(toTable)
+                .from(targetTable)
                 .insert([projectData]);
 
             if (insertError) throw insertError;
@@ -542,47 +467,12 @@
     if (typeof window !== 'undefined') {
         window.moveProject = async (projectId: string) => {
             const fromTable = 'active_projects';
-            
-            const targetTable = await new Promise<string>((resolve) => {
-                const options = projectTypes
-                    .filter(type => type.id !== 'active')
-                    .map(type => ({
-                        label: type.label,
-                        value: type.id === 'static' ? 'static_website_projects' :
-                               'mentor_to_launch_projects'
-                    }));
-
-                // Create a simple modal for selection
-                const modal = document.createElement('div');
-                modal.className = 'move-modal';
-                modal.innerHTML = `
-                    <div class="move-modal-content">
-                        <h3>Move Project To:</h3>
-                        ${options.map(opt => `
-                            <button onclick="document.querySelector('.move-modal').dataset.selected='${opt.value}'">
-                                ${opt.label}
-                            </button>
-                        `).join('')}
-                    </div>
-                `;
-                document.body.appendChild(modal);
-
-                modal.addEventListener('click', (e) => {
-                    const selected = modal.dataset.selected;
-                    if (selected) {
-                        modal.remove();
-                        resolve(selected);
-                    }
-                });
-            });
-
-            if (targetTable) {
-                await moveProject(projectId, fromTable, targetTable);
-            }
+            const targetTable = 'mentor_to_launch_projects';
+            await moveProject(projectId, fromTable, targetTable);
         };
     }
 
-    function handleAddProject(type: 'active' | 'static' | 'mentor') {
+    function handleAddProject(type: 'active' | 'mentor') {
         selectedProjectType = type;
         showNewProjectModal = true;
     }
@@ -616,20 +506,13 @@
                         onDataChange={(data) => handleDataChange(data)}
                         on:edit={handleProjectEdit}
                     />
-                {:else if projectType.id === 'static'}
+                {:else if projectType.id === 'mentor'}
                     <DatabaseTable
-                        config={staticWebsiteConfig}
+                        config={mentorToLaunchConfig}
                         {supabase}
-                        initialData={staticWebsiteProjects}
+                        initialData={mentorToLaunchProjects}
                         onDataChange={(data) => handleDataChange(data)}
                         on:edit={handleProjectEdit}
-                    />
-                {:else if projectType.id === 'mentor'}
-                    <DataTable 
-                        data={mentorToLaunchProjects}
-                        columns={mentorColumns}
-                        sortable={true}
-                        searchable={true}
                     />
                 {/if}
             </section>
@@ -770,6 +653,14 @@
     :global(.status-completed) {
         background: #e2e8f0;
         color: #2d3748;
+    }
+
+    :global(.status-badge) {
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        color: white;
+        font-size: 0.875rem;
+        white-space: nowrap;
     }
 
     @media (max-width: 768px) {

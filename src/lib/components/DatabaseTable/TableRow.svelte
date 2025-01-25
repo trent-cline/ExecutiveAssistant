@@ -89,22 +89,38 @@
         text-align: center;
     }
 
+    td {
+        vertical-align: middle;
+    }
+
+    /* Icons within regular cells should be treated like text */
+    td :global(.fas:not(.action-button .fas)) {
+        display: inline-flex;
+        align-items: center;
+        font-size: 1em;
+        margin: 0 0.125rem;
+        vertical-align: middle;
+    }
+
     .actions {
         display: flex;
         justify-content: flex-end;
-        gap: 0.5rem;
-        padding-right: 1rem;
+        gap: 0.25rem;  
+        padding-right: 0.5rem;  
     }
 
+    /* Action buttons remain slightly larger for clickability */
     .action-button {
-        padding: 0.25rem;
+        padding: 0.125rem;  
         border-radius: 0.25rem;
-        color: #64748b;
-        transition: all 0.2s;
+        background: transparent;
+        border: none;
+        color: #4a5568;
+        cursor: pointer;
+        transition: background-color 0.2s;
     }
 
     .action-button:hover {
         background-color: #e2e8f0;
-        color: #475569;
     }
 </style>
