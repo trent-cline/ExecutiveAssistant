@@ -29,6 +29,8 @@
     let editingRow: any = null;
     let selectedRows = new Set<string>();
     let columnWidths: { [key: string]: number } = {};
+    let draggedRow: any = null;
+    let dragOverRow: any = null;
 
     $: pageSize = config.pageSize || 10;
     $: totalPages = Math.ceil(filteredData.length / pageSize);
@@ -47,7 +49,7 @@
         try {
             loading = true;
             error = null;
-            let query = supabase.from(config.tableName).select('*');
+            let query = supabase.from(config.tableName).select('*').order('position');
             
             const { data: fetchedData, error: fetchError } = await query;
             
@@ -62,6 +64,104 @@
         } finally {
             loading = false;
         }
+    }
+
+    function handleDragStart(event: DragEvent, row: any) {
+        draggedRow = row;
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', row.id);
+        }
+        event.currentTarget?.classList.add('dragging');
+    }
+
+    function handleDragOver(event: DragEvent, row: any) {
+        event.preventDefault();
+        if (draggedRow && draggedRow.id !== row.id) {
+            dragOverRow = row;
+            const draggedRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+            const draggedMiddle = draggedRect.top + draggedRect.height / 2;
+            if (event.clientY < draggedMiddle) {
+                event.currentTarget?.classList.add('drag-above');
+                event.currentTarget?.classList.remove('drag-below');
+            } else {
+                event.currentTarget?.classList.add('drag-below');
+                event.currentTarget?.classList.remove('drag-above');
+            }
+        }
+    }
+
+    function handleDragLeave(event: DragEvent) {
+        event.preventDefault();
+        event.currentTarget?.classList.remove('drag-above', 'drag-below');
+    }
+
+    async function handleDrop(event: DragEvent, targetRow: any) {
+        event.preventDefault();
+        if (!draggedRow || draggedRow.id === targetRow.id) return;
+
+        const draggedRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+        const draggedMiddle = draggedRect.top + draggedRect.height / 2;
+        const isAbove = event.clientY < draggedMiddle;
+
+        // Calculate new position
+        const allRows = [...data].sort((a, b) => a.position - b.position);
+        const draggedIndex = allRows.findIndex(row => row.id === draggedRow.id);
+        const targetIndex = allRows.findIndex(row => row.id === targetRow.id);
+        
+        // Remove dragged row
+        allRows.splice(draggedIndex, 1);
+        
+        // Insert at new position
+        const newIndex = isAbove ? targetIndex : targetIndex + 1;
+        allRows.splice(newIndex, 0, draggedRow);
+
+        // Update positions while preserving all other fields
+        const updatedRows = allRows.map((row, index) => ({
+            ...row,
+            position: (index + 1) * 1000
+        }));
+
+        // Update database
+        try {
+            // Update each row individually to preserve all fields
+            const updates = updatedRows.map(row => 
+                supabase
+                    .from(config.tableName)
+                    .update({ position: row.position })
+                    .eq('id', row.id)
+            );
+
+            const results = await Promise.all(updates);
+            const errors = results.filter(result => result.error);
+            
+            if (errors.length > 0) {
+                throw errors[0].error;
+            }
+
+            // Update local data
+            data = updatedRows;
+            applyFiltersAndSort();
+            onDataChange(data);
+        } catch (err) {
+            console.error('Error updating positions:', err);
+            error = err.message;
+        }
+
+        // Clean up
+        event.currentTarget?.classList.remove('drag-above', 'drag-below', 'dragging');
+        draggedRow = null;
+        dragOverRow = null;
+    }
+
+    function handleDragEnd(event: DragEvent) {
+        event.preventDefault();
+        const rows = document.querySelectorAll('tr');
+        rows.forEach(row => {
+            row.classList.remove('drag-above', 'drag-below', 'dragging');
+        });
+        draggedRow = null;
+        dragOverRow = null;
     }
 
     function renderCell(column: any, row: any) {
@@ -111,12 +211,9 @@
     async function handleMilestoneUpdate(event: CustomEvent) {
         const { rowId, milestones } = event.detail;
         // Update local data
-        data = data.map(row => {
-            if (row.id === rowId) {
-                return { ...row, ...milestones };
-            }
-            return row;
-        });
+        data = data.map(row => 
+            row.id === rowId ? { ...row, ...milestones } : row
+        );
         applyFiltersAndSort();
         onDataChange(data);
     }
@@ -381,8 +478,16 @@
                 <tbody>
                     {#each paginatedData as row (row.id)}
                         <tr
+                            draggable="true"
+                            on:dragstart={(event) => handleDragStart(event, row)}
+                            on:dragover={(event) => handleDragOver(event, row)}
+                            on:dragleave={handleDragLeave}
+                            on:drop={(event) => handleDrop(event, row)}
+                            on:dragend={handleDragEnd}
                             transition:fade|local
                             class:selected={selectedRows.has(row.id)}
+                            class:dragging={draggedRow?.id === row.id}
+                            class:drag-target={dragOverRow?.id === row.id}
                         >
                             {#if config.features?.select}
                                 <td class="w-10">
@@ -756,5 +861,17 @@
         .hide-on-mobile {
             display: none;
         }
+    }
+
+    .dragging {
+        opacity: 0.5;
+    }
+
+    .drag-above {
+        border-top: 2px solid #4a5568;
+    }
+
+    .drag-below {
+        border-bottom: 2px solid #4a5568;
     }
 </style>

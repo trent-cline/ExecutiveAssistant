@@ -25,7 +25,7 @@
     onMount(() => {
         const unsubscribe = user.subscribe(($user) => {
             if ($user && $page.url.pathname === '/') {
-                goto('/brain-inbox');
+                goto('/table');
             } else if (!$user && protectedRoutes.includes($page.url.pathname)) {
                 goto('/');
             }
