@@ -651,21 +651,7 @@
         overflow-x: auto;
         position: relative;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
-        scrollbar-color: #cbd5e0 #f7fafc;
-    }
-
-    .table-wrapper::-webkit-scrollbar {
-        height: 6px;
-    }
-
-    .table-wrapper::-webkit-scrollbar-track {
-        background: #f7fafc;
-    }
-
-    .table-wrapper::-webkit-scrollbar-thumb {
-        background-color: #cbd5e0;
-        border-radius: 3px;
+        max-width: 100vw;
     }
 
     table {
@@ -673,86 +659,24 @@
         border-collapse: separate;
         border-spacing: 0;
         font-size: 0.875rem;
-    }
-
-    .table-fixed {
-        table-layout: fixed;
-    }
-
-    tr {
-        background: white;
-        transition: background-color 0.2s;
-    }
-
-    tr:hover {
-        background-color: #f8fafc;
-    }
-
-    td {
-        padding: 0.75rem;
-        border-bottom: 1px solid #e2e8f0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        table-layout: auto;
     }
 
     @media (max-width: 768px) {
+        .table-fixed {
+            table-layout: auto;
+            min-width: max-content;
+        }
+
         td {
-            padding: 0.625rem;
-            font-size: 0.8125rem;
+            min-width: 100px;
+            max-width: none;
+            white-space: nowrap;
         }
 
         .action-cell {
-            padding: 0.375rem !important;
-        }
-
-        .action-buttons {
-            gap: 0.25rem;
-        }
-
-        .action-button {
-            width: 1.75rem;
-            height: 1.75rem;
-            font-size: 0.875rem;
-        }
-
-        @media (max-width: 360px) {
-            .action-buttons {
-                flex-direction: column;
-                gap: 0.125rem;
-            }
-
-            .action-button {
-                width: 2rem;
-                height: 2rem;
-            }
-        }
-
-        .page-button {
-            min-width: 40px;
-            min-height: 40px;
-            margin: 0 0.125rem;
-        }
-
-        .table-wrapper::before,
-        .table-wrapper::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 15px;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .table-wrapper::before {
-            left: 0;
-            background: linear-gradient(to right, rgba(255,255,255,0.9), transparent);
-        }
-
-        .table-wrapper::after {
-            right: 0;
-            background: linear-gradient(to left, rgba(255,255,255,0.9), transparent);
+            min-width: auto;
+            width: auto;
         }
     }
 

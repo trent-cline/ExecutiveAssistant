@@ -145,7 +145,7 @@
             width: '200px',
             sortable: true,
             template: (value, row) => row && row.id ? `
-                <a href="/projects/mentor/${row.id}" class="company-link">${value || ''}</a>
+                <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
             ` : value || ''
         },
         { 
@@ -281,7 +281,7 @@
                 label: 'Business',
                 type: 'text',
                 template: (value, row) => row && row.id ? `
-                    <a href="/projects/mentor/${row.id}" class="company-link">${value || ''}</a>
+                    <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
                 ` : value || ''
             },
             {

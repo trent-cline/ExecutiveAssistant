@@ -64,8 +64,11 @@
 
     async function loadProject() {
         try {
-            // First load the project with milestones
-            const { data: projectData, error: projectError } = await supabase
+            let projectData;
+            let projectError;
+
+            // Try active_projects first
+            ({ data: projectData, error: projectError } = await supabase
                 .from('active_projects')
                 .select(`
                     *,
@@ -81,9 +84,57 @@
                     )
                 `)
                 .eq('id', $page.params.id)
-                .single();
+                .single());
 
-            if (projectError) throw projectError;
+            if (!projectError && projectData) {
+                // Project found in active_projects
+            } else {
+                // Try mentor_to_launch_projects
+                ({ data: projectData, error: projectError } = await supabase
+                    .from('mentor_to_launch_projects')
+                    .select(`
+                        *,
+                        milestones (
+                            id,
+                            title,
+                            description,
+                            due_date,
+                            status,
+                            priority,
+                            created_at,
+                            updated_at
+                        )
+                    `)
+                    .eq('id', $page.params.id)
+                    .single());
+
+                if (!projectError && projectData) {
+                    // Project found in mentor_to_launch_projects
+                } else {
+                    // Try pro_bono_projects
+                    ({ data: projectData, error: projectError } = await supabase
+                        .from('pro_bono_projects')
+                        .select(`
+                            *,
+                            milestones (
+                                id,
+                                title,
+                                description,
+                                due_date,
+                                status,
+                                priority,
+                                created_at,
+                                updated_at
+                            )
+                        `)
+                        .eq('id', $page.params.id)
+                        .single());
+                }
+            }
+
+            if (projectError || !projectData) {
+                throw new Error('Project not found');
+            }
 
             // Then load notes through the junction table
             const { data: notesData, error: notesError } = await supabase
@@ -106,10 +157,10 @@
                 ...projectData,
                 notes: notesData?.map(n => n.notes) || []
             };
-            loading = false;
         } catch (err) {
             console.error('Error loading project:', err);
             error = err.message;
+        } finally {
             loading = false;
         }
     }
@@ -118,8 +169,31 @@
         if (!project) return;
         
         try {
-            const { data, error: err } = await supabase
+            let tableName = 'active_projects';
+            
+            // Determine which table to update based on where we found the project
+            const { data: activeProject } = await supabase
                 .from('active_projects')
+                .select('id')
+                .eq('id', project.id)
+                .single();
+
+            if (!activeProject) {
+                const { data: mentorProject } = await supabase
+                    .from('mentor_to_launch_projects')
+                    .select('id')
+                    .eq('id', project.id)
+                    .single();
+
+                if (mentorProject) {
+                    tableName = 'mentor_to_launch_projects';
+                } else {
+                    tableName = 'pro_bono_projects';
+                }
+            }
+
+            const { data, error: err } = await supabase
+                .from(tableName)
                 .update({
                     company_name: project.company_name,
                     partner_name: project.partner_name,
@@ -143,14 +217,6 @@
         } catch (err) {
             console.error('Error updating project:', err);
             error = err.message;
-        }
-    }
-
-    function toggleEdit() {
-        editMode = !editMode;
-        if (!editMode) {
-            // If canceling edit, reload the project to reset any changes
-            loadProject();
         }
     }
 
@@ -220,6 +286,14 @@
         } catch (err) {
             console.error('Error adding note:', err);
             error = err.message;
+        }
+    }
+
+    function toggleEdit() {
+        editMode = !editMode;
+        if (!editMode) {
+            // If canceling edit, reload the project to reset any changes
+            loadProject();
         }
     }
 

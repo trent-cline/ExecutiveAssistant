@@ -74,6 +74,13 @@
                 .single();
 
             if (projectError) throw projectError;
+            
+            // Check if project exists
+            if (!projectData) {
+                error = 'Project not found';
+                loading = false;
+                return;
+            }
 
             // Get project notes through junction table
             const { data: notesData, error: notesError } = await supabase
@@ -93,10 +100,10 @@
                 ...projectData,
                 notes: notesData?.map(n => n.notes) || []
             };
-            loading = false;
         } catch (err) {
             console.error('Error loading project:', err);
             error = err.message;
+        } finally {
             loading = false;
         }
     }
@@ -198,15 +205,45 @@
             <i class="fas fa-arrow-left"></i>
             Back to Projects
         </a>
-        {#if project}
-            <h1>{project.company_name}</h1>
+        {#if loading}
+            <h1>Loading project...</h1>
+        {:else if error}
+            <div class="error-message">
+                <h1>{error}</h1>
+                <p>Unable to load project details. Please try again later.</p>
+            </div>
+        {:else if project}
+            <div class="header-content">
+                <h1>{project.company_name}</h1>
+                <div class="header-actions">
+                    {#if editMode}
+                        <button class="save-btn" on:click={updateProject}>
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <button class="cancel-btn" on:click={() => editMode = false}>
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    {:else}
+                        <button class="edit-btn" on:click={() => editMode = true}>
+                            <i class="fas fa-edit"></i> Edit Project
+                        </button>
+                    {/if}
+                </div>
+            </div>
         {/if}
     </div>
 
     {#if loading}
-        <div class="loading">Loading project details...</div>
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
     {:else if error}
-        <div class="error">{error}</div>
+        <div class="error-container">
+            <p>Please check the URL and try again, or return to the projects page.</p>
+            <a href="/projects" class="btn-primary">
+                <i class="fas fa-arrow-left"></i> Back to Projects
+            </a>
+        </div>
     {:else if project}
         <div class="project-content" in:fly="{{ y: 20, duration: 300, delay: 200 }}">
             <!-- Project Info Section -->
@@ -393,6 +430,44 @@
         max-width: 1200px;
         margin: 0 auto;
         padding: 2rem;
+    }
+
+    .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 200px;
+        font-size: 2rem;
+        color: #4a5568;
+    }
+
+    .error-container {
+        text-align: center;
+        padding: 2rem;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .error-message {
+        color: #e53e3e;
+        margin-bottom: 1rem;
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #4299e1;
+        color: white;
+        border-radius: 0.375rem;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: #3182ce;
     }
 
     .header {
