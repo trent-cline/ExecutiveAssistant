@@ -130,6 +130,15 @@
                 DLLTW Notes
             </a>
 
+            <a 
+                href="/company" 
+                class:active={$page.url.pathname === '/company'} 
+                on:click={() => isMobile && (isOpen = false)}
+            >
+                <i class="fas fa-building" aria-hidden="true"></i>
+                Pillar Apps
+            </a>
+
             <button class="logout-btn" on:click={handleLogout}>
                 <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
                 Logout

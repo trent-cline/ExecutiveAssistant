@@ -19,7 +19,8 @@
         '/shopping-list',
         '/active-projects',
         '/dlltw-notes',
-        '/private-notes'
+        '/private-notes',
+        '/company'
     ];
 
     onMount(() => {

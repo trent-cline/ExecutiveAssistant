@@ -49,7 +49,6 @@
             title={tooltip}
         >
             <span class="milestone-icon">{icon}</span>
-            <div class="milestone-tooltip">{tooltip}</div>
         </button>
     {/each}
 </div>
@@ -92,29 +91,5 @@
         font-size: 1rem;
         transition: all 0.2s ease-in-out;
         line-height: 1;
-    }
-
-    /* Tooltip styles */
-    .milestone-tooltip {
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%) translateY(-8px);
-        padding: 0.5rem;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        border-radius: 0.25rem;
-        font-size: 0.75rem;
-        white-space: nowrap;
-        pointer-events: none;
-        opacity: 0;
-        transition: all 0.2s ease-in-out;
-        z-index: 10;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .milestone-button:hover .milestone-tooltip {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
     }
 </style>

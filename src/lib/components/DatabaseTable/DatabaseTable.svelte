@@ -650,14 +650,29 @@
     .table-wrapper {
         overflow-x: auto;
         position: relative;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e0 #f7fafc;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: #f7fafc;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background-color: #cbd5e0;
+        border-radius: 3px;
     }
 
     table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        font-size: 0.875rem; /* Smaller base font size for mobile */
+        font-size: 0.875rem;
     }
 
     .table-fixed {
@@ -674,14 +689,73 @@
     }
 
     td {
-        padding: 0.5rem; /* Reduced padding for mobile */
+        padding: 0.75rem;
         border-bottom: 1px solid #e2e8f0;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    /* Mobile-first styles */
+    @media (max-width: 768px) {
+        td {
+            padding: 0.625rem;
+            font-size: 0.8125rem;
+        }
+
+        .action-cell {
+            padding: 0.375rem !important;
+        }
+
+        .action-buttons {
+            gap: 0.25rem;
+        }
+
+        .action-button {
+            width: 1.75rem;
+            height: 1.75rem;
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 360px) {
+            .action-buttons {
+                flex-direction: column;
+                gap: 0.125rem;
+            }
+
+            .action-button {
+                width: 2rem;
+                height: 2rem;
+            }
+        }
+
+        .page-button {
+            min-width: 40px;
+            min-height: 40px;
+            margin: 0 0.125rem;
+        }
+
+        .table-wrapper::before,
+        .table-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 15px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .table-wrapper::before {
+            left: 0;
+            background: linear-gradient(to right, rgba(255,255,255,0.9), transparent);
+        }
+
+        .table-wrapper::after {
+            right: 0;
+            background: linear-gradient(to left, rgba(255,255,255,0.9), transparent);
+        }
+    }
+
     .action-cell {
         padding: 0.5rem !important;
         white-space: nowrap;
@@ -735,7 +809,6 @@
         font-size: 1rem;
     }
 
-    /* Add tooltip styles */
     .action-button {
         position: relative;
     }
@@ -773,10 +846,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.25rem; /* Reduced gap for mobile */
+        gap: 0.25rem;
         padding: 0.75rem;
         border-top: 1px solid #e2e8f0;
-        flex-wrap: wrap; /* Allow wrapping on very small screens */
+        flex-wrap: wrap;
     }
 
     .page-button {
@@ -784,7 +857,7 @@
         border-radius: 0.375rem;
         color: #64748b;
         transition: all 0.2s;
-        min-width: 32px; /* Ensure touchable size */
+        min-width: 32px;
         min-height: 32px;
         display: inline-flex;
         align-items: center;
@@ -793,7 +866,7 @@
 
     .page-info {
         color: #64748b;
-        font-size: 0.75rem; /* Smaller font for mobile */
+        font-size: 0.75rem;
         padding: 0 0.5rem;
     }
 
@@ -801,7 +874,7 @@
         display: flex;
         gap: 0.25rem;
         margin-bottom: 0.75rem;
-        flex-wrap: wrap; /* Allow wrapping on mobile */
+        flex-wrap: wrap;
     }
 
     .btn {
@@ -816,7 +889,6 @@
         white-space: nowrap;
     }
 
-    /* Tablet and desktop styles */
     @media (min-width: 640px) {
         table {
             font-size: 1rem;
@@ -856,7 +928,6 @@
         }
     }
 
-    /* Optional: Hide less important columns on mobile */
     @media (max-width: 639px) {
         .hide-on-mobile {
             display: none;
