@@ -49,7 +49,12 @@
         try {
             loading = true;
             error = null;
-            let query = supabase.from(config.tableName).select('*').order('position');
+            let query = supabase.from(config.tableName).select('*');
+            
+            // Apply default sort if specified
+            if (config.defaultSort) {
+                query = query.order(config.defaultSort.column, { ascending: config.defaultSort.direction === 'asc' });
+            }
             
             const { data: fetchedData, error: fetchError } = await query;
             

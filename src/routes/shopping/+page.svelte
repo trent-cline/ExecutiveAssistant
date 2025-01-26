@@ -3,8 +3,8 @@
     import { supabase } from '$lib/supabase';
     import { user } from '$lib/auth';
     import { goto } from '$app/navigation';
-    import DataTable from '$lib/components/DataTable/DataTable.svelte';
-    import type { Column } from '$lib/components/DataTable/types';
+    import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
+    import type { Column } from '$lib/components/DatabaseTable/types';
 
     interface ShoppingItem {
         id: string;
@@ -79,6 +79,28 @@
             ]
         }
     ];
+
+    let tableConfig = {
+        tableName: 'shopping_list',
+        columns,
+        pageSize: 10,
+        defaultSort: {
+            column: 'created_at',
+            direction: 'desc'
+        },
+        features: {
+            search: true,
+            pagination: true,
+            sort: true,
+            filter: true,
+            edit: true,
+            delete: true
+        },
+        permissions: {
+            canEdit: (row) => true,
+            canDelete: (row) => true
+        }
+    };
 
     onMount(async () => {
         if (!$user) {
@@ -261,11 +283,12 @@
             {/if}
         </div>
     {:else}
-        <DataTable
-            {columns}
-            data={items}
+        <DatabaseTable
+            config={tableConfig}
+            initialData={items}
             {loading}
             {error}
+            {supabase}
             on:sort={handleSort}
             on:filter={handleFilter}
             on:rowAction={handleRowAction}

@@ -3,9 +3,8 @@
     import { supabase } from '$lib/supabase';
     import { user } from '$lib/auth';
     import { goto } from '$app/navigation';
-    import DataTable from '$lib/components/DataTable/DataTable.svelte';
     import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
-    import type { Column } from '$lib/components/DataTable/types';
+    import type { Column } from '$lib/components/DatabaseTable/types';
     import NewProjectModal from './NewProjectModal.svelte';
     import ProjectMilestones from './ProjectMilestones.svelte';
 
