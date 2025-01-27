@@ -3,6 +3,7 @@
     import { supabase } from '$lib/supabase';
     import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
     import type { Column, DatabaseTableConfig } from '$lib/components/DatabaseTable/types';
+    import EditNoteModal from './EditNoteModal.svelte';
 
     interface Note {
         id: string;
@@ -15,14 +16,18 @@
         priority: 'Low' | 'Medium' | 'High';
         category: 'Note' | 'Task' | 'Reminder';
         user_id: string;
+        completed_at?: string;
+        updated_at?: string;
     }
 
-    export let hideCompleted = false;
+    export let hideCompleted = true;
 
     let notes: Note[] = [];
     let loading = true;
     let error = '';
     let displayedNotes: Note[] = [];
+    let showEditModal = false;
+    let editingNote: Note | null = null;
 
     $: {
         displayedNotes = hideCompleted 
@@ -32,11 +37,20 @@
 
     const columns: Column[] = [
         {
-            id: 'status',
-            label: 'Status',
-            width: '100px',
-            sortable: true,
-            filterable: true
+            id: 'status_toggle',
+            label: '',
+            width: '50px',
+            template: (_, row) => `
+                <button 
+                    class="action-button ${row.status === 'Done' ? 'done' : 'not-done'}"
+                    title="${row.status === 'Done' ? 'Mark as not done' : 'Mark as done'}"
+                    aria-label="${row.status === 'Done' ? 'Mark task as not done' : 'Mark task as done'}"
+                    aria-pressed="${row.status === 'Done'}"
+                    onclick="document.dispatchEvent(new CustomEvent('toggle-status', { detail: '${row.id}' }))"
+                >
+                    <i class="fas fa-check" aria-hidden="true"></i>
+                </button>
+            `
         },
         {
             id: 'name',
@@ -61,12 +75,45 @@
             type: 'select'
         },
         {
-            id: 'priority',
-            label: 'Priority',
-            width: '100px',
-            sortable: true,
-            filterable: true,
-            type: 'select'
+            id: 'actions',
+            label: 'Actions',
+            width: '240px',
+            template: (_, row) => `
+                <div class="action-buttons" role="group" aria-label="Note actions">
+                    <button 
+                        class="action-button edit"
+                        title="Edit note"
+                        aria-label="Edit note"
+                        onclick="document.dispatchEvent(new CustomEvent('edit-note', { detail: '${row.id}' }))"
+                    >
+                        <i class="fas fa-edit" aria-hidden="true"></i>
+                    </button>
+                    <button 
+                        class="action-button delete"
+                        title="Delete note"
+                        aria-label="Delete note"
+                        onclick="document.dispatchEvent(new CustomEvent('delete-note', { detail: '${row.id}' }))"
+                    >
+                        <i class="fas fa-trash" aria-hidden="true"></i>
+                    </button>
+                    <button 
+                        class="action-button shopping"
+                        title="Send to Shopping List"
+                        aria-label="Send to Shopping List"
+                        onclick="document.dispatchEvent(new CustomEvent('send-to-shopping', { detail: '${row.id}' }))"
+                    >
+                        <i class="fas fa-shopping-cart" aria-hidden="true"></i>
+                    </button>
+                    <button 
+                        class="action-button dlltw"
+                        title="Send to DLLTW Notes"
+                        aria-label="Send to DLLTW Notes"
+                        onclick="document.dispatchEvent(new CustomEvent('send-to-dlltw', { detail: '${row.id}' }))"
+                    >
+                        <i class="fas fa-book" aria-hidden="true"></i>
+                    </button>
+                </div>
+            `
         },
         {
             id: 'due_date',
@@ -79,24 +126,18 @@
         {
             id: 'created_at',
             label: 'Created',
-            width: '150px',
+            width: '120px',
             sortable: true,
             type: 'date',
             template: (value) => value ? new Date(value).toLocaleDateString() : ''
         },
         {
-            id: 'status_toggle',
-            label: '',
-            width: '50px',
-            template: (_, row) => `
-                <button 
-                    class="action-button ${row.status === 'Done' ? 'done' : ''}"
-                    title="${row.status === 'Done' ? 'Mark as not done' : 'Mark as done'}"
-                    onclick="document.dispatchEvent(new CustomEvent('toggle-status', { detail: '${row.id}' }))"
-                >
-                    <i class="fas fa-check"></i>
-                </button>
-            `
+            id: 'priority',
+            label: 'Priority',
+            width: '100px',
+            sortable: true,
+            filterable: true,
+            type: 'select'
         }
     ];
 
@@ -110,8 +151,8 @@
             filter: true,
             sort: true,
             pagination: true,
-            edit: true,
-            delete: true,
+            edit: false,
+            delete: false,
             add: true,
             select: false,
             export: false,
@@ -125,29 +166,76 @@
         }
     };
 
+    function handleEdit(event: CustomEvent) {
+        const noteId = event.detail;
+        editingNote = notes.find(n => n.id === noteId) || null;
+        if (editingNote) {
+            showEditModal = true;
+        }
+    }
+
+    async function handleEditSave(updatedNote: Note) {
+        try {
+            const { error: updateError } = await supabase
+                .from('brain_dump_database')
+                .update({ 
+                    name: updatedNote.name,
+                    summary: updatedNote.summary,
+                    status: updatedNote.status,
+                    priority: updatedNote.priority,
+                    category: updatedNote.category,
+                    due_date: updatedNote.due_date,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', updatedNote.id);
+
+            if (updateError) throw updateError;
+            
+            showEditModal = false;
+            editingNote = null;
+            await loadNotes();
+        } catch (err) {
+            console.error('Error updating note:', err);
+            error = err.message;
+        }
+    }
+
     onMount(async () => {
         await loadNotes();
+        
+        // Add event listener for edit note
+        document.addEventListener('edit-note', handleEdit);
         document.addEventListener('toggle-status', handleToggleStatus);
+        document.addEventListener('send-to-dlltw', handleSendToDLLTW);
+        document.addEventListener('send-to-shopping', handleSendToShopping);
+        document.addEventListener('delete-note', handleDelete);
+
         return () => {
+            document.removeEventListener('edit-note', handleEdit);
             document.removeEventListener('toggle-status', handleToggleStatus);
+            document.removeEventListener('send-to-dlltw', handleSendToDLLTW);
+            document.removeEventListener('send-to-shopping', handleSendToShopping);
+            document.removeEventListener('delete-note', handleDelete);
         };
     });
 
     async function loadNotes() {
+        loading = true;
+        error = '';
         try {
-            loading = true;
-            error = '';
-
-            const { data: fetchedNotes, error: fetchError } = await supabase
+            const { data, error: fetchError } = await supabase
                 .from('brain_dump_database')
                 .select('*')
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
 
-            notes = fetchedNotes;
+            notes = data || [];
+            displayedNotes = hideCompleted 
+                ? notes.filter(note => note.status !== 'Done')
+                : notes;
         } catch (err) {
-            console.error('Error loading notes:', err);
+            console.error('Error fetching notes:', err);
             error = err.message;
         } finally {
             loading = false;
@@ -160,22 +248,131 @@
         if (!note) return;
 
         const newStatus = note.status === 'Done' ? 'Not Started' : 'Done';
+        
+        try {
+            const { error } = await supabase
+                .from('brain_dump_database')
+                .update({ 
+                    status: newStatus,
+                    completed_at: newStatus === 'Done' ? new Date().toISOString() : null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', noteId);
+
+            if (error) throw error;
+            await loadNotes();
+        } catch (err) {
+            console.error('Error updating note status:', err);
+            error = err.message;
+        }
+    }
+
+    async function handleSendToDLLTW(event: CustomEvent) {
+        const noteId = event.detail;
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return;
 
         try {
+            // Insert into dlltw_notes table
+            const { error: insertError } = await supabase
+                .from('dlltw_notes')
+                .insert({
+                    name: note.name,
+                    summary: note.summary,
+                    content: note.summary,
+                    status: 'Not Started',
+                    priority: note.priority,
+                    category: note.category,
+                    original_note_id: note.id,
+                    user_id: note.user_id
+                });
+
+            if (insertError) throw insertError;
+
+            // Update the original note status to Done
             const { error: updateError } = await supabase
                 .from('brain_dump_database')
-                .update({ status: newStatus })
+                .update({
+                    status: 'Done',
+                    completed_at: new Date().toISOString()
+                })
                 .eq('id', noteId);
 
             if (updateError) throw updateError;
-
-            notes = notes.map(n => 
-                n.id === noteId 
-                    ? { ...n, status: newStatus }
-                    : n
-            );
+            await loadNotes();
         } catch (err) {
-            console.error('Error updating note status:', err);
+            console.error('Error sending to DLLTW:', err);
+            error = err.message;
+        }
+    }
+
+    async function handleSendToShopping(event: CustomEvent) {
+        const noteId = event.detail;
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return;
+
+        try {
+            const { error: insertError } = await supabase
+                .from('shopping_list')
+                .insert({
+                    name: note.name,
+                    description: note.summary,
+                    status: 'Not Started',
+                    priority: note.priority,
+                    original_note_id: note.id,
+                    user_id: note.user_id
+                });
+
+            if (insertError) throw insertError;
+
+            // Update the original note status to Done
+            const { error: updateError } = await supabase
+                .from('brain_dump_database')
+                .update({
+                    status: 'Done',
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', noteId);
+
+            if (updateError) throw updateError;
+            await loadNotes();
+        } catch (err) {
+            console.error('Error sending to shopping list:', err);
+            error = err.message;
+        }
+    }
+
+    async function handleDelete(event: CustomEvent) {
+        const noteId = event.detail;
+        if (!confirm('Are you sure you want to delete this note? This will also remove related items from the shopping list and DLLTW notes.')) return;
+
+        try {
+            // First delete any related shopping list items
+            const { error: shoppingError } = await supabase
+                .from('shopping_list')
+                .delete()
+                .eq('original_note_id', noteId);
+
+            if (shoppingError) throw shoppingError;
+
+            // Delete any related DLLTW notes
+            const { error: dlltError } = await supabase
+                .from('dlltw_notes')
+                .delete()
+                .eq('original_note_id', noteId);
+
+            if (dlltError) throw dlltError;
+
+            // Then delete the note itself
+            const { error } = await supabase
+                .from('brain_dump_database')
+                .delete()
+                .eq('id', noteId);
+
+            if (error) throw error;
+            await loadNotes();
+        } catch (err) {
+            console.error('Error deleting note:', err);
             error = err.message;
         }
     }
@@ -206,22 +403,6 @@
             handleDelete(row);
         }
     }
-
-    async function handleDelete(row: Note) {
-        try {
-            const { error: deleteError } = await supabase
-                .from('brain_dump_database')
-                .delete()
-                .eq('id', row.id);
-
-            if (deleteError) throw deleteError;
-
-            notes = notes.filter(n => n.id !== row.id);
-        } catch (err) {
-            console.error('Error deleting note:', err);
-            error = err.message;
-        }
-    }
 </script>
 
 <div class="brain-inbox-table">
@@ -231,29 +412,23 @@
         </div>
     {/if}
 
-    {#if loading}
-        <div class="brain-inbox-container">
-            <div class="loading">Loading...</div>
-        </div>
-    {:else}
-        <div class="brain-inbox-container">
-            <div class="header">
-                <h2>Brain Inbox</h2>
-                <p class="subtitle">Central repository for all notes and tasks</p>
-            </div>
-            <div class="table-container">
-                <DatabaseTable
-                    config={tableConfig}
-                    {supabase}
-                    initialData={displayedNotes}
-                    onDataChange={(data) => notes = data}
-                    className="brain-inbox-table"
-                    on:sort={handleSort}
-                    on:filter={handleFilter}
-                    on:rowAction={handleRowAction}
-                />
-            </div>
-        </div>
+    <DatabaseTable
+        data={displayedNotes}
+        config={tableConfig}
+        {loading}
+        supabase={supabase}
+    />
+
+    {#if showEditModal && editingNote}
+        <EditNoteModal
+            note={editingNote}
+            show={showEditModal}
+            onClose={() => {
+                showEditModal = false;
+                editingNote = null;
+            }}
+            onSave={handleEditSave}
+        />
     {/if}
 </div>
 
@@ -366,5 +541,78 @@
     :global(.brain-inbox-table td[data-column="summary"]) {
         max-width: 400px;
         white-space: pre-line;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-start;
+    }
+
+    .action-button {
+        padding: 0.25rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 0.25rem;
+        transition: background-color 0.2s;
+    }
+
+    .action-button:hover {
+        background-color: #f3f4f6;
+    }
+
+    .action-button.edit {
+        color: #4f46e5;
+    }
+
+    .action-button.delete {
+        color: #ef4444;
+    }
+
+    .action-button.shopping {
+        color: #10b981;
+    }
+
+    .action-button.dlltw {
+        color: #6366f1;
+    }
+
+    .action-button.done {
+        color: #22c55e;  
+        background-color: #dcfce7;
+    }
+
+    .action-button.done:hover {
+        background-color: #bbf7d0;
+    }
+
+    .action-button.not-done {
+        color: #6b7280;  
+        background-color: #f3f4f6;
+    }
+
+    .action-button.not-done:hover {
+        background-color: #e5e7eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .action-button.done {
+            color: #4ade80;
+            background-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .action-button.done:hover {
+            background-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .action-button.not-done {
+            color: #9ca3af;
+            background-color: rgba(107, 114, 128, 0.2);
+        }
+
+        .action-button.not-done:hover {
+            background-color: rgba(107, 114, 128, 0.3);
+        }
     }
 </style>

@@ -284,52 +284,36 @@
         }
     }
 
-    async function handleSave(event) {
+    async function handleSave(event: CustomEvent) {
+        const record = event.detail;
         try {
-            const formData = event.detail;
-            const isEdit = !!formData.id;
+            if (editingRow?.id) {
+                // Update existing record
+                const { error: err } = await supabase
+                    .from(config.tableName)
+                    .update({
+                        ...record,
+                        // Only add updated_at if the column exists in the config
+                        ...(config.columns.some(col => col.id === 'updated_at') ? { updated_at: new Date().toISOString() } : {})
+                    })
+                    .eq('id', editingRow.id);
 
-            // Remove any event-related properties that shouldn't be saved
-            const cleanData = { ...formData };
-            delete cleanData.isTrusted;
-            delete cleanData.timeStamp;
-            delete cleanData.currentTarget;
-            delete cleanData.target;
-            delete cleanData.type;
-
-            // Add timestamps and user_id for new records
-            if (!isEdit) {
-                cleanData.created_at = new Date().toISOString();
-                cleanData.updated_at = new Date().toISOString();
-                cleanData.user_id = cleanData.user_id || $user?.id;
+                if (err) throw err;
             } else {
-                cleanData.updated_at = new Date().toISOString();
+                // Insert new record
+                const { error: err } = await supabase
+                    .from(config.tableName)
+                    .insert({
+                        ...record,
+                        // Only add created_at if the column exists in the config
+                        ...(config.columns.some(col => col.id === 'created_at') ? { created_at: new Date().toISOString() } : {})
+                    });
+
+                if (err) throw err;
             }
 
-            // Save to Supabase
-            const { data: savedData, error } = await supabase
-                .from(config.tableName)
-                .upsert([cleanData], {
-                    onConflict: 'id',
-                    ignoreDuplicates: false
-                })
-                .select();
-
-            if (error) throw error;
-
-            // Update local data
-            if (isEdit) {
-                data = data.map(row => 
-                    row.id === formData.id ? savedData[0] : row
-                );
-            } else {
-                data = [...data, savedData[0]];
-            }
-            
-            applyFiltersAndSort();
-            onDataChange(data);
             showEditModal = false;
-            dispatch(isEdit ? 'edit' : 'add', { row: savedData[0] });
+            await fetchData();
         } catch (err) {
             console.error('Error saving record:', err);
             error = err.message;

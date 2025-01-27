@@ -55,16 +55,13 @@
     }
 
     export async function startRecording() {
-        if (!audioRecorder) {
-            const initialized = await initializeRecorder();
-            if (!initialized) return;
+        if (!audioRecorder || audioRecorder.state === 'inactive') {
+            audioChunks = [];
+            audioRecorder.start(1000);
+            isRecording = true;
+            updateMicrophoneLevel();
+            dispatch('recordingStarted');
         }
-
-        audioChunks = [];
-        audioRecorder.start(1000);
-        isRecording = true;
-        updateMicrophoneLevel();
-        dispatch('recordingStarted');
     }
 
     export function stopRecording() {

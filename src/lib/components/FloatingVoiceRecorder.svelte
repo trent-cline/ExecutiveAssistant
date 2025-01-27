@@ -3,7 +3,9 @@
     import VoiceRecorder from './VoiceRecorder.svelte';
     import { supabase } from '$lib/supabase';
     import { analyzeNote, analysisStatus } from '$lib/stores/noteAnalysis';
+    import { createEventDispatcher } from 'svelte';
 
+    const dispatch = createEventDispatcher();
     let isOpen = false;
     let status = '';
     let isRecording = false;
@@ -90,6 +92,9 @@
             if (brainDumpError) throw brainDumpError;
 
             status = 'Saved!';
+            // Dispatch a custom event to notify that data has been updated
+            dispatch('noteAdded');
+            
             setTimeout(() => {
                 status = '';
                 isOpen = false;
@@ -107,7 +112,10 @@
     {#if !isOpen}
         <button 
             class="floating-button" 
-            on:click={() => isOpen = true}
+            on:click={() => {
+                isOpen = true;
+                isRecording = true;
+            }}
             aria-label="Open voice recorder"
             transition:fade
         >

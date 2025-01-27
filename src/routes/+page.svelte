@@ -38,6 +38,13 @@
         initializeRecorder();
     });
 
+    async function loadNotes() {
+        const savedNotes = localStorage.getItem('voice-notes');
+        if (savedNotes) {
+            notes = JSON.parse(savedNotes);
+        }
+    }
+
     async function initializeRecorder() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -72,6 +79,7 @@
                 console.log('Audio blob size:', audioBlob.size, 'type:', audioBlob.type);
                 
                 await saveNote(audioBlob, transcription);
+                await loadNotes();
             };
 
             audioRecorder.startRecording = () => {
