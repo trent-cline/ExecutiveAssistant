@@ -11,6 +11,7 @@
 
     let isMenuOpen = false;
     let isMobile = false;
+    let initialAuthCheckComplete = false;
 
     // Protected routes that require authentication
     const protectedRoutes = [
@@ -25,26 +26,42 @@
         '/company/cloud-costs'
     ];
 
-    onMount(() => {
+    onMount(async () => {
+        // Wait for initial session check
+        const { data: { session } } = await supabase.auth.getSession();
+        initialAuthCheckComplete = true;
+
         const unsubscribe = user.subscribe(($user) => {
+            if (!initialAuthCheckComplete) return;
+            
             if ($user && $page.url.pathname === '/') {
                 goto('/table');
-            } else if (!$user && protectedRoutes.includes($page.url.pathname)) {
+            } else if (!$user && protectedRoutes.some(route => $page.url.pathname.startsWith(route))) {
                 goto('/');
             }
         });
 
+        // Check window size on mount
+        if (browser) {
+            const checkSize = () => {
+                isMobile = window.innerWidth < 768;
+            };
+            checkSize();
+            window.addEventListener('resize', checkSize);
+        }
+
         return () => {
             unsubscribe();
+            if (browser) {
+                window.removeEventListener('resize', checkSize);
+            }
         };
     });
 
     // Cleanup
     onDestroy(() => {
         if (browser) {
-            window.removeEventListener('resize', () => {
-                isMobile = window.innerWidth < 768;
-            });
+            // Removed event listener in onMount return function
         }
     });
 </script>

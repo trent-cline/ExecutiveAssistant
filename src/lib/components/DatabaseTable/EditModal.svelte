@@ -48,18 +48,43 @@
             dispatch('save', cleanData);
         }
     }
+
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            dispatch('close');
+        }
+    }
+
+    function handleOverlayClick(event) {
+        if (event.target === event.currentTarget) {
+            dispatch('close');
+        }
+    }
 </script>
 
-<div class="modal-backdrop" on:click={() => dispatch('close')} transition:fade>
-    <div
-        class="modal-content"
-        on:click|stopPropagation
-        transition:fly="{{ y: 20, duration: 300 }}"
+<div 
+    class="modal-backdrop" 
+    on:click={handleOverlayClick}
+    on:keydown={handleKeydown}
+    role="dialog" 
+    aria-modal="true" 
+    aria-labelledby="modal-title"
+    transition:fade 
+>
+    <div 
+        class="modal-content" 
+        on:click|stopPropagation 
+        transition:fly="{{ y: 20, duration: 300 }}" 
+        role="document"
     >
         <div class="modal-header">
-            <h2>{row.id ? 'Edit' : 'Add'} Record</h2>
-            <button class="close-button" on:click={() => dispatch('close')}>
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <h2 id="modal-title">{row.id ? 'Edit' : 'Add'} Record</h2>
+            <button 
+                class="close-button" 
+                on:click={() => dispatch('close')} 
+                aria-label="Close modal"
+            >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -81,6 +106,7 @@
                                 id={column.id}
                                 bind:value={formData[column.id]}
                                 class:error={errors[column.id]}
+                                aria-required={column.required}
                             >
                                 <option value="">Select...</option>
                                 {#each column.filterOptions as option}
@@ -94,6 +120,7 @@
                                 bind:value={formData[column.id]}
                                 class:error={errors[column.id]}
                                 step="any"
+                                aria-required={column.required}
                             />
                         {:else if column.type === 'date'}
                             <input
@@ -101,6 +128,7 @@
                                 id={column.id}
                                 bind:value={formData[column.id]}
                                 class:error={errors[column.id]}
+                                aria-required={column.required}
                             />
                         {:else}
                             <input
@@ -108,6 +136,7 @@
                                 id={column.id}
                                 bind:value={formData[column.id]}
                                 class:error={errors[column.id]}
+                                aria-required={column.required}
                             />
                         {/if}
 
@@ -121,10 +150,19 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" on:click={() => dispatch('close')}>
+                <button 
+                    type="button" 
+                    class="btn btn-secondary" 
+                    on:click={() => dispatch('close')} 
+                    aria-label="Cancel"
+                >
                     Cancel
                 </button>
-                <button type="submit" class="btn btn-primary">
+                <button 
+                    type="submit" 
+                    class="btn btn-primary" 
+                    aria-label={row.id ? 'Save Changes' : 'Add Record'}
+                >
                     {row.id ? 'Save Changes' : 'Add Record'}
                 </button>
             </div>

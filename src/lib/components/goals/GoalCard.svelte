@@ -91,18 +91,20 @@
                         class="action-btn complete-btn" 
                         on:click={handleComplete}
                         title="Mark as Complete"
+                        aria-label="Mark goal as complete"
                         disabled={isCompleting}
                     >
-                        <i class="fas fa-check"></i>
+                        <i class="fas fa-check" aria-hidden="true"></i>
                     </button>
                 {/if}
                 <button 
                     class="action-btn edit-btn" 
                     on:click={() => showEditModal = true}
                     title="Edit Goal"
+                    aria-label="Edit goal"
                     disabled={isCompleting}
                 >
-                    <i class="fas fa-edit"></i>
+                    <i class="fas fa-edit" aria-hidden="true"></i>
                 </button>
             </div>
         </div>

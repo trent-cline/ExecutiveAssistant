@@ -3,21 +3,50 @@ import { supabase } from '$lib/supabase';
 import type { PrivateNote, ShoppingItem, DLLTWNote, BrainDumpEntry } from '$lib/types';
 
 interface AnalysisResult {
-    shopping_items?: string[];
+    categories: string[];
+    title: string;
+    priority: 'low' | 'medium' | 'high';
+    tags?: string[];
+    is_private?: boolean;
+    recipient?: string;
+    source: 'local' | 'public' | 'private';
+    shopping_items?: Array<{
+        name: string;
+        quantity?: number;
+        notes?: string;
+        urgency?: 'low' | 'medium' | 'high';
+    }>;
     dlltw_notes?: Array<{
+        title: string;
         content: string;
         chapter?: string;
+        key_points?: string[];
+        book_section?: string;
     }>;
-    brain_dump?: {
-        content: string;
-        category?: string;
+    project_references?: Array<{
+        title: string;
+        type: 'static_website' | 'mentor_to_launch' | 'other';
+        description?: string;
+        estimated_time?: string;
         priority?: 'low' | 'medium' | 'high';
-    };
+        status?: 'planning' | 'in_progress' | 'review' | 'completed';
+    }>;
+    goals?: Array<{
+        title: string;
+        description?: string;
+        target_date?: string;
+        success_criteria?: string[];
+        category?: 'personal' | 'business';
+        milestones?: Array<{
+            title: string;
+            due_date?: string;
+        }>;
+    }>;
 }
 
 export const analyzeNote = async (note: PrivateNote) => {
     try {
-        // Call your analysis API
+        // Call analysis API
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: {
@@ -32,49 +61,15 @@ export const analyzeNote = async (note: PrivateNote) => {
 
         const analysis: AnalysisResult = await response.json();
 
-        // Distribute items to appropriate tables
-        if (analysis.shopping_items) {
-            await Promise.all(analysis.shopping_items.map(item => 
-                supabase
-                    .from('shopping_list')
-                    .insert({
-                        item,
-                        note_id: note.id,
-                        quantity: 1,
-                        completed: false
-                    })
-            ));
-        }
+        // Return analysis results without making database changes
+        return {
+            summary: analysis.title,
+            category: analysis.categories[0] || 'Note',
+            priority: analysis.priority || 'Low',
+            status: 'Not Started',
+            tags: analysis.tags || []
+        };
 
-        if (analysis.dlltw_notes) {
-            await Promise.all(analysis.dlltw_notes.map(note => 
-                supabase
-                    .from('dlltw_notes')
-                    .insert({
-                        content: note.content,
-                        chapter: note.chapter
-                    })
-            ));
-        }
-
-        if (analysis.brain_dump) {
-            await supabase
-                .from('brain_dump_database')
-                .insert({
-                    content: analysis.brain_dump.content,
-                    category: analysis.brain_dump.category,
-                    priority: analysis.brain_dump.priority,
-                    status: 'new'
-                });
-        }
-
-        // Mark note as analyzed
-        await supabase
-            .from('private_notes')
-            .update({ analyzed: true })
-            .eq('id', note.id);
-
-        return analysis;
     } catch (error) {
         console.error('Error analyzing note:', error);
         throw error;

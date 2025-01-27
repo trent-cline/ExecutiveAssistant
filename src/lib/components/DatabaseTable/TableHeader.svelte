@@ -77,6 +77,13 @@
             onSort(column.id);
         }
     }
+
+    function getSortIcon(columnId: string) {
+        if (sortState?.column === columnId) {
+            return sortState.direction === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+        }
+        return 'fa-sort';
+    }
 </script>
 
 <thead>
@@ -107,9 +114,12 @@
                         <button 
                             class="sort-button" 
                             on:click={() => handleSortClick(column)}
-                            title="Sort by {column.label}"
+                            aria-label="Sort by {column.label}"
                         >
-                            <i class="fas fa-sort{sortState?.column === column.id ? (sortState.direction === 'asc' ? '-up' : '-down') : ''}"></i>
+                            <i 
+                                class="fas {getSortIcon(column.id)}" 
+                                aria-hidden="true"
+                            ></i>
                         </button>
                     {/if}
                 </div>
@@ -117,6 +127,9 @@
                     <div
                         class="resize-handle"
                         on:mousedown={(e) => handleMouseDown(e, column.id)}
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-label="Resize column"
                     ></div>
                 {/if}
             </th>

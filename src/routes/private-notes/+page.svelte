@@ -25,6 +25,23 @@
         }
     }
 
+    async function untagNote(noteId) {
+        try {
+            const { error: err } = await supabase
+                .from('private_notes')
+                .delete()
+                .eq('id', noteId);
+
+            if (err) throw err;
+            
+            // Optimistically remove the note from the local array
+            privateNotes = privateNotes.filter(note => note.id !== noteId);
+        } catch (e) {
+            error = 'Failed to untag note';
+            console.error('Error untagging note:', e);
+        }
+    }
+
     // Subscribe to realtime updates
     onMount(() => {
         loadPrivateNotes();
@@ -82,6 +99,14 @@
                             <i class="fas fa-clock" aria-hidden="true"></i>
                             {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
                         </span>
+                        <button 
+                            class="untag-button"
+                            on:click={() => untagNote(note.id)}
+                            aria-label="Remove from private notes"
+                        >
+                            <i class="fas fa-tag-slash" aria-hidden="true"></i>
+                            Untag
+                        </button>
                     </div>
                 </div>
             {/each}
@@ -134,17 +159,40 @@
     }
 
     .note-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         font-size: 0.875rem;
         color: #666;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
     }
 
     .note-time {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+    }
+
+    .untag-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        border: none;
+        border-radius: 0.25rem;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .untag-button:hover {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    .untag-button i {
+        font-size: 0.875rem;
     }
 
     .loading, .error, .empty {

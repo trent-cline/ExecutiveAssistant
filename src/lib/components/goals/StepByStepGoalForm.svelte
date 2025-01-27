@@ -167,19 +167,28 @@
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click={close} in:fade>
+    <div 
+        class="modal-backdrop" 
+        class:show
+        on:click={close}
+        on:keydown={handleKeydown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="step-form-title"
+    >
         <div 
             class="modal-content"
             on:click|stopPropagation
-            in:fly="{{ y: 20, duration: 300 }}"
+            role="document"
         >
             <div class="modal-header">
-                <div class="step-info">
-                    <h2>{steps[currentStep].title}</h2>
-                    <p class="step-description">{steps[currentStep].description}</p>
-                </div>
-                <button class="close-btn" on:click={close}>
-                    <i class="fas fa-times"></i>
+                <h2 id="step-form-title">Create a Goal</h2>
+                <button 
+                    class="close-button"
+                    on:click={close}
+                    aria-label="Close goal form"
+                >
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
 
@@ -203,6 +212,7 @@
                                 bind:value={formData.title}
                                 placeholder="e.g., Run a marathon"
                                 required
+                                aria-required="true"
                             />
                         </div>
 
@@ -266,9 +276,11 @@
                                     bind:value={newMilestone}
                                     placeholder="Add a milestone"
                                     on:keydown={(e) => e.key === 'Enter' && addMilestone()}
+                                    aria-label="Add milestone"
                                 />
                                 <button type="button" class="add-btn" on:click={addMilestone}>
-                                    <i class="fas fa-plus"></i>
+                                    <i class="fas fa-plus" aria-hidden="true"></i>
+                                    <span class="sr-only">Add milestone</span>
                                 </button>
                             </div>
                             <div class="milestones-list">
@@ -276,7 +288,8 @@
                                     <div class="milestone-item">
                                         <span>{milestone}</span>
                                         <button type="button" class="remove-btn" on:click={() => removeMilestone(i)}>
-                                            <i class="fas fa-times"></i>
+                                            <i class="fas fa-times" aria-hidden="true"></i>
+                                            <span class="sr-only">Remove milestone {i + 1}</span>
                                         </button>
                                     </div>
                                 {/each}
@@ -346,18 +359,21 @@
                 <div class="form-actions">
                     {#if currentStep > 0}
                         <button type="button" class="back-btn" on:click={prevStep}>
-                            <i class="fas fa-arrow-left"></i> Back
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                            <span class="sr-only">Back</span>
                         </button>
                     {/if}
 
                     {#if currentStep < steps.length - 1}
                         <button type="button" class="next-btn" on:click={nextStep}>
-                            Next <i class="fas fa-arrow-right"></i>
+                            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                            <span class="sr-only">Next</span>
                         </button>
                     {:else}
                         <button type="submit" class="submit-btn" disabled={loading}>
                             {#if loading}
-                                <i class="fas fa-spinner fa-spin"></i>
+                                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                                <span class="sr-only">Creating goal...</span>
                             {:else}
                                 Create Goal
                             {/if}

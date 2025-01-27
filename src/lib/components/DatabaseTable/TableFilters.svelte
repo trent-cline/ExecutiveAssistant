@@ -35,8 +35,9 @@
         class="btn btn-secondary"
         class:active={showFilters}
         on:click={() => showFilters = !showFilters}
+        aria-label="Toggle filters"
     >
-        <i class="fas fa-filter"></i>
+        <i class="fas fa-filter" aria-hidden="true"></i>
         Filters
         {#if filters.length > 0}
             <span class="filter-count">{filters.length}</span>
@@ -53,8 +54,9 @@
                             <button
                                 class="clear-filter"
                                 on:click={() => dispatch('clearFilter', column.id)}
+                                aria-label={`Clear filter by ${column.label}`}
                             >
-                                <i class="fas fa-times"></i>
+                                <i class="fas fa-times" aria-hidden="true"></i>
                             </button>
                         {/if}
                     </div>

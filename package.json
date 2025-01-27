@@ -47,6 +47,7 @@
 		"date-fns": "^4.1.0",
 		"openai": "^4.78.1",
 		"svelte-dnd-action": "^0.9.54",
+		"tippy.js": "^6.3.7",
 		"uuid": "^11.0.5"
 	}
 }

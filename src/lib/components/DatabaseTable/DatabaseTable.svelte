@@ -456,13 +456,18 @@
                         placeholder="Search..."
                         bind:value={searchTerm}
                         on:input={applyFiltersAndSort}
+                        aria-label="Search input"
                     />
                 </div>
             {/if}
             
             <div class="toolbar-actions">
                 {#if config.features?.add && config.permissions?.canAdd}
-                    <button class="btn btn-primary" on:click={handleAdd}>
+                    <button 
+                        class="btn btn-primary" 
+                        on:click={handleAdd}
+                        aria-label="Add new record"
+                    >
                         <i class="fas fa-plus"></i> Add New
                     </button>
                 {/if}
@@ -500,6 +505,7 @@
                                         type="checkbox"
                                         checked={selectedRows.has(row.id)}
                                         on:change={() => handleSelect(row.id)}
+                                        aria-label="Select row"
                                     />
                                 </td>
                             {/if}
@@ -542,9 +548,9 @@
                                             <button 
                                                 class="action-button edit-button" 
                                                 on:click={() => handleEdit(row)}
-                                                title="Edit"
+                                                aria-label="Edit row"
                                             >
-                                                <i class="fas fa-pen-to-square"></i>
+                                                <i class="fas fa-pen-to-square" aria-hidden="true"></i>
                                             </button>
                                         {/if}
 
@@ -552,35 +558,35 @@
                                             <button 
                                                 class="action-button move-button" 
                                                 on:click={() => moveProject(row.id, 'active_projects', 'mentor_to_launch_projects')}
-                                                title="Move to Mentor Projects"
+                                                aria-label="Move to Mentor Projects"
                                             >
-                                                <i class="fas fa-arrow-down"></i>
+                                                <i class="fas fa-arrow-down" aria-hidden="true"></i>
                                             </button>
                                         {:else if config.tableName === 'mentor_to_launch_projects'}
                                             <button 
                                                 class="action-button move-button" 
                                                 on:click={() => moveProject(row.id, 'mentor_to_launch_projects', 'active_projects')}
-                                                title="Move to Active Projects"
+                                                aria-label="Move to Active Projects"
                                             >
-                                                <i class="fas fa-arrow-up"></i>
+                                                <i class="fas fa-arrow-up" aria-hidden="true"></i>
                                             </button>
                                         {/if}
 
                                         <button 
                                             class="action-button analytics-button" 
                                             on:click={() => showAnalytics(row)}
-                                            title="Analytics"
+                                            aria-label="View analytics"
                                         >
-                                            <i class="fas fa-chart-line"></i>
+                                            <i class="fas fa-chart-line" aria-hidden="true"></i>
                                         </button>
                                         
                                         {#if config.features?.delete && config.permissions?.canDelete(row)}
                                             <button 
                                                 class="action-button delete-button"
                                                 on:click={() => handleDelete(row.id)}
-                                                title="Delete"
+                                                aria-label="Delete row"
                                             >
-                                                <i class="fas fa-trash-can"></i>
+                                                <i class="fas fa-trash-can" aria-hidden="true"></i>
                                             </button>
                                         {/if}
                                     </div>
@@ -598,15 +604,17 @@
                     class="page-button"
                     disabled={currentPage === 1}
                     on:click={() => currentPage = 1}
+                    aria-label="Go to first page"
                 >
-                    <i class="fas fa-angle-double-left"></i>
+                    <i class="fas fa-angle-double-left" aria-hidden="true"></i>
                 </button>
                 <button 
                     class="page-button"
                     disabled={currentPage === 1}
                     on:click={() => currentPage--}
+                    aria-label="Go to previous page"
                 >
-                    <i class="fas fa-angle-left"></i>
+                    <i class="fas fa-angle-left" aria-hidden="true"></i>
                 </button>
                 <span class="page-info">
                     Page {currentPage} of {totalPages}
@@ -615,15 +623,17 @@
                     class="page-button"
                     disabled={currentPage === totalPages}
                     on:click={() => currentPage++}
+                    aria-label="Go to next page"
                 >
-                    <i class="fas fa-angle-right"></i>
+                    <i class="fas fa-angle-right" aria-hidden="true"></i>
                 </button>
                 <button 
                     class="page-button"
                     disabled={currentPage === totalPages}
                     on:click={() => currentPage = totalPages}
+                    aria-label="Go to last page"
                 >
-                    <i class="fas fa-angle-double-right"></i>
+                    <i class="fas fa-angle-double-right" aria-hidden="true"></i>
                 </button>
             </div>
         {/if}

@@ -78,14 +78,44 @@
             loading = false;
         }
     }
+
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            dispatch('close');
+        }
+    }
+
+    function handleOverlayClick(event) {
+        if (event.target === event.currentTarget) {
+            dispatch('close');
+        }
+    }
 </script>
 
-<div class="modal-backdrop" on:click={() => dispatch('close')} transition:fade>
-    <div class="modal" on:click|stopPropagation transition:fly="{{ y: 20, duration: 300 }}">
+<div 
+    class="modal-backdrop" 
+    class:show
+    on:click={handleOverlayClick}
+    on:keydown={handleKeydown}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+    transition:fade
+>
+    <div 
+        class="modal" 
+        on:click|stopPropagation
+        role="document"
+        transition:fly="{{ y: 20, duration: 300 }}"
+    >
         <div class="modal-header">
-            <h2>Create New Goal</h2>
-            <button class="close-btn" on:click={() => dispatch('close')}>
-                <i class="fas fa-times"></i>
+            <h2 id="modal-title">Create New Goal</h2>
+            <button 
+                class="close-btn"
+                on:click={() => dispatch('close')}
+                aria-label="Close modal"
+            >
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
 
@@ -95,6 +125,7 @@
                 <input
                     type="text"
                     id="title"
+                    name="title"
                     bind:value={goal.title}
                     placeholder="What do you want to achieve?"
                     required
@@ -105,10 +136,11 @@
                 <label for="description">Description</label>
                 <textarea
                     id="description"
+                    name="description"
                     bind:value={goal.description}
                     placeholder="Add some details about your goal..."
                     rows="3"
-                />
+                ></textarea>
             </div>
 
             <div class="form-row">
@@ -175,6 +207,7 @@
                     <input
                         type="number"
                         id="target"
+                        name="target"
                         bind:value={goal.target_value}
                         placeholder="Set a target"
                     />
@@ -185,6 +218,7 @@
                     <input
                         type="date"
                         id="target_date"
+                        name="target_date"
                         bind:value={goal.target_date}
                     />
                 </div>

@@ -79,11 +79,11 @@
         {
             id: 'website',
             label: 'Website',
-            width: '150px',
+            width: '100px',
             template: (value) => value ? `
-                <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
+                <button class="website-button" onclick="window.open('${value}', '_blank')">
                     <i class="fas fa-arrow-up-right-from-square"></i>
-                </a>
+                </button>
             ` : '<span class="no-website">-</span>'
         },
         {
@@ -121,14 +121,9 @@
         {
             id: 'actions',
             label: 'Actions',
-            width: '200px',
+            width: '100px',
             template: (_, row) => `
                 <div class="action-buttons">
-                    ${row.website ? `
-                        <a href="${row.website}" target="_blank" rel="noopener noreferrer" class="website-link">
-                            <i class="fas fa-arrow-up-right-from-square"></i> Website
-                        </a>
-                    ` : ''}
                     <button onclick="window.moveProject('${row.id}')" class="move-button">
                         <i class="fas fa-exchange-alt"></i> Move
                     </button>
@@ -218,7 +213,12 @@
             {
                 id: 'website',
                 label: 'Website',
-                type: 'url'
+                type: 'url',
+                template: (value) => value ? `
+                    <button class="website-button" onclick="window.open('${value}', '_blank')">
+                        <i class="fas fa-arrow-up-right-from-square"></i>
+                    </button>
+                ` : '<span class="no-website">-</span>'
             },
             {
                 id: 'milestones',
@@ -709,19 +709,20 @@
         text-decoration: underline;
     }
 
-    :global(.website-link) {
+    :global(.website-button) {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.25rem 0.75rem;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
         background: #4c1d95;
         color: white;
         text-decoration: none;
         border-radius: 4px;
         font-size: 0.75rem;
+        cursor: pointer;
     }
 
-    :global(.website-link:hover) {
+    :global(.website-button:hover) {
         background: #6d28d9;
     }
 

@@ -56,12 +56,12 @@
 
     <td class="actions">
         {#each actions as action}
-            <button
+            <button 
                 class="action-button"
-                title={action.label}
                 on:click|stopPropagation={action.handler}
+                aria-label={action.label || action.type}
             >
-                <i class="fas fa-{action.icon}"></i>
+                <i class="fas fa-{action.icon}" aria-hidden="true"></i>
             </button>
         {/each}
     </td>

@@ -26,25 +26,68 @@
             }
 
             const data = await response.json();
+            const timestamp = new Date().toISOString();
             
             // Save to private notes
-            const { data: noteData, error } = await supabase
+            const { data: noteData, error: privateError } = await supabase
                 .from('private_notes')
                 .insert([
                     {
                         content: data.text,
-                        created_at: new Date().toISOString(),
+                        created_at: timestamp,
                         analyzed: false
                     }
                 ])
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (privateError) throw privateError;
 
             // Analyze the note
             status = 'Analyzing...';
-            await analyzeNote(noteData);
+            const analysis = await analyzeNote(noteData);
+
+            // Map priority to valid enum values (Low, Medium, High)
+            let priority = 'Medium';
+            if (analysis.priority) {
+                const lowerPriority = analysis.priority.toLowerCase();
+                if (lowerPriority === 'low' || lowerPriority === 'minor') priority = 'Low';
+                else if (lowerPriority === 'high' || lowerPriority === 'critical') priority = 'High';
+            }
+
+            // Map category to valid enum values (Note, Task, Reminder)
+            let category = 'Note';
+            if (analysis.category) {
+                const lowerCategory = analysis.category.toLowerCase();
+                if (lowerCategory.includes('task') || lowerCategory.includes('todo')) category = 'Task';
+                else if (lowerCategory.includes('remind')) category = 'Reminder';
+            }
+
+            // Map status to valid enum values (Not Started, In Progress, Done)
+            let noteStatus = 'Not Started';
+            if (analysis.status) {
+                const lowerStatus = analysis.status.toLowerCase();
+                if (lowerStatus.includes('progress') || lowerStatus.includes('doing')) noteStatus = 'In Progress';
+                else if (lowerStatus.includes('done') || lowerStatus.includes('complete')) noteStatus = 'Done';
+            }
+
+            // Save to brain_dump_database with analysis results
+            const { error: brainDumpError } = await supabase
+                .from('brain_dump_database')
+                .insert([
+                    {
+                        name: data.text,
+                        summary: analysis.summary,
+                        status: noteStatus,
+                        priority: priority,
+                        category: category,
+                        created_at: timestamp,
+                        localid: crypto.randomUUID(),
+                        user_id: 'public'
+                    }
+                ]);
+
+            if (brainDumpError) throw brainDumpError;
 
             status = 'Saved!';
             setTimeout(() => {
@@ -65,13 +108,14 @@
         <button 
             class="floating-button" 
             on:click={() => isOpen = true}
+            aria-label="Open voice recorder"
             transition:fade
         >
             <i class="fas fa-microphone" aria-hidden="true"></i>
         </button>
     {:else}
         <div class="recorder-panel" transition:fly={{ y: 20, duration: 300 }}>
-            <button class="close-button" on:click={() => isOpen = false}>
+            <button class="close-button" on:click={() => isOpen = false} aria-label="Close voice recorder">
                 <i class="fas fa-times" aria-hidden="true"></i>
             </button>
             <VoiceRecorder 

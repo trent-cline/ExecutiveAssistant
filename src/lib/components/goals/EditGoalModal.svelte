@@ -5,6 +5,8 @@
 
     export let show = false;
     export let goal;
+    export let onClose;
+    export let onSave;
 
     const dispatch = createEventDispatcher();
     let title = goal?.title || '';
@@ -51,19 +53,45 @@
     function handleClose() {
         show = false;
     }
+
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            onClose();
+        }
+    }
+
+    function handleOverlayClick(event) {
+        if (event.target === event.currentTarget) {
+            onClose();
+        }
+    }
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click={handleClose} transition:fade>
+    <div 
+        class="modal-backdrop" 
+        class:show
+        on:click={handleOverlayClick}
+        on:keydown={handleKeydown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-goal-title"
+        transition:fade
+    >
         <div 
             class="modal-content"
             on:click|stopPropagation
+            role="document"
             transition:scale={{duration: 300, start: 0.95}}
         >
             <div class="modal-header">
-                <h2>Edit Goal</h2>
-                <button class="close-btn" on:click={handleClose}>
-                    <i class="fas fa-times"></i>
+                <h2 id="edit-goal-title">Edit Goal</h2>
+                <button 
+                    class="close-button"
+                    on:click={onClose}
+                    aria-label="Close edit goal"
+                >
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
 
@@ -143,7 +171,7 @@
                 </div>
 
                 <div class="button-group">
-                    <button type="button" class="cancel-btn" on:click={handleClose}>
+                    <button type="button" class="cancel-btn" on:click={onClose}>
                         Cancel
                     </button>
                     <button type="submit" class="save-btn">
@@ -194,7 +222,7 @@
         margin: 0;
     }
 
-    .close-btn {
+    .close-button {
         background: none;
         border: none;
         font-size: 1.25rem;
@@ -205,7 +233,7 @@
         transition: background-color 0.2s;
     }
 
-    .close-btn:hover {
+    .close-button:hover {
         background: #f7fafc;
     }
 

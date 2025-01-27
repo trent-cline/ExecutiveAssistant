@@ -3,24 +3,51 @@
     import GoalCard from './GoalCard.svelte';
 
     export let show = false;
+    export let onClose;
     export let goals = [];
 
     function handleClose() {
         show = false;
     }
+
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            onClose();
+        }
+    }
+
+    function handleOverlayClick(event) {
+        if (event.target === event.currentTarget) {
+            onClose();
+        }
+    }
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click={handleClose} transition:fade>
+    <div 
+        class="modal-backdrop" 
+        class:show
+        on:click={handleOverlayClick}
+        on:keydown={handleKeydown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="completed-goals-title"
+        transition:fade
+    >
         <div 
             class="modal-content"
             on:click|stopPropagation
+            role="document"
             transition:scale={{duration: 300, start: 0.95}}
         >
             <div class="modal-header">
-                <h2>🏆 Completed Goals</h2>
-                <button class="close-btn" on:click={handleClose}>
-                    <i class="fas fa-times"></i>
+                <h2 id="completed-goals-title">🏆 Completed Goals</h2>
+                <button 
+                    class="close-btn"
+                    on:click={handleClose}
+                    aria-label="Close completed goals"
+                >
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
 
