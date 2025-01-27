@@ -6,115 +6,128 @@
     import { goto } from '$app/navigation';
     import { fade, fly } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
-    import ProgressRing from './ProgressRing.svelte';
-    import GoalCard from './GoalCard.svelte';
-    import NewGoalModal from './NewGoalModal.svelte';
-    import StepByStepGoalForm from './StepByStepGoalForm.svelte';
-    import VisualGoalForm from './VisualGoalForm.svelte';
-    import GoalTimeline from './GoalTimeline.svelte';
-    import GoalInsights from './GoalInsights.svelte';
+    import ProgressRing from '$lib/components/goals/ProgressRing.svelte';
+    import GoalCard from '$lib/components/goals/GoalCard.svelte';
+    import NewGoalModal from '$lib/components/goals/NewGoalModal.svelte';
+    import StepByStepGoalForm from '$lib/components/goals/StepByStepGoalForm.svelte';
+    import GoalTimeline from '$lib/components/goals/GoalTimeline.svelte';
+    import GoalInsights from '$lib/components/goals/GoalInsights.svelte';
+    import CompletedGoalsModal from '$lib/components/goals/CompletedGoalsModal.svelte';
 
     let loading = true;
     let error = '';
     let goals = [];
     let showNewGoalModal = false;
     let showStepForm = false;
-    let showVisualForm = false;
+    let showCompletedGoals = false;
     let selectedCategory = 'all';
     let selectedView = 'grid';
     let searchQuery = '';
-    let achievements = [];
-    let streakCount = 0;
-    let completionRate = 0;
     let showConfetti = false;
+    let completionRate = 0;
+    let streakCount = 0;
+    let achievements = [];
 
-    // Goal categories with icons
     const categories = [
-        { id: 'all', label: 'All Goals', icon: 'fa-globe' },
+        { id: 'all', label: 'All Goals', icon: 'fa-th-large' },
         { id: 'personal', label: 'Personal', icon: 'fa-user' },
-        { id: 'business', label: 'Business', icon: 'fa-briefcase' },
+        { id: 'work', label: 'Work', icon: 'fa-briefcase' },
+        { id: 'health', label: 'Health', icon: 'fa-heartbeat' },
+        { id: 'finance', label: 'Finance', icon: 'fa-dollar-sign' },
+        { id: 'learning', label: 'Learning', icon: 'fa-book' },
         { id: 'completed', label: 'Completed', icon: 'fa-check-circle' }
     ];
 
-    // View options
     const viewOptions = [
-        { id: 'grid', label: 'Grid View', icon: 'fa-th-large' },
+        { id: 'grid', label: 'Grid', icon: 'fa-th-large' },
         { id: 'timeline', label: 'Timeline', icon: 'fa-stream' },
         { id: 'insights', label: 'Insights', icon: 'fa-chart-line' }
     ];
 
     onMount(async () => {
-        if (!$user) {
-            goto('/login');
-            return;
-        }
         await loadGoals();
-        await loadAchievements();
-        calculateStats();
+        loading = false;
     });
 
     async function loadGoals() {
         try {
             const { data, error: err } = await supabase
                 .from('goals')
-                .select(`
-                    *,
-                    goal_progress (
-                        value,
-                        recorded_at
-                    ),
-                    goal_rewards (
-                        title,
-                        description,
-                        unlocked_at,
-                        claimed_at,
-                        required_progress
-                    )
-                `)
+                .select('*')
                 .order('created_at', { ascending: false });
 
             if (err) throw err;
-            goals = data;
-            loading = false;
+            goals = data || [];
+            await calculateStats();
         } catch (err) {
             console.error('Error loading goals:', err);
             error = err.message;
-            loading = false;
         }
     }
 
-    async function loadAchievements() {
-        // Load user achievements and badges
-        achievements = [
-            { title: 'Goal Setter', description: 'Created first goal', icon: '🎯' },
-            { title: 'Streak Master', description: '7-day streak', icon: '🔥' },
-            { title: 'Business Pro', description: 'Completed 5 business goals', icon: '💼' }
-        ];
-    }
-
-    function calculateStats() {
-        // Calculate completion rate and streaks
+    async function calculateStats() {
+        if (!goals.length) return;
+        
         const completedGoals = goals.filter(g => g.status === 'completed');
-        completionRate = goals.length ? (completedGoals.length / goals.length) * 100 : 0;
-        streakCount = calculateCurrentStreak();
+        completionRate = (completedGoals.length / goals.length) * 100;
+        
+        // Calculate streak based on completed goals
+        const today = new Date();
+        const sortedCompletions = completedGoals
+            .map(g => new Date(g.completed_at))
+            .sort((a, b) => b - a);
+
+        let streak = 0;
+        if (sortedCompletions.length > 0) {
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            let currentDate = today;
+            
+            for (const completionDate of sortedCompletions) {
+                const dayDiff = Math.round((currentDate - completionDate) / oneDayMs);
+                if (dayDiff <= 1) {
+                    streak++;
+                    currentDate = completionDate;
+                } else {
+                    break;
+                }
+            }
+        }
+        streakCount = streak;
     }
 
-    function calculateCurrentStreak() {
-        // Calculate current streak based on daily goal completions
-        return 5; // Placeholder
+    async function handleGoalComplete(event) {
+        const goal = event.detail;
+        
+        // Show confetti animation
+        showConfetti = true;
+        setTimeout(() => showConfetti = false, 3000);
+
+        // Update completion stats
+        await calculateStats();
+        
+        // Remove goal from current view after 2 seconds
+        setTimeout(() => {
+            goals = goals.filter(g => g.id !== goal.id);
+        }, 2000);
     }
 
     function getFilteredGoals() {
         let filtered = [...goals];
         
-        if (selectedCategory !== 'all') {
-            filtered = filtered.filter(g => 
-                selectedCategory === 'completed' 
-                    ? g.status === 'completed'
-                    : g.category === selectedCategory && g.status !== 'completed'
-            );
+        // First filter out completed goals unless specifically viewing completed category
+        if (selectedCategory === 'completed') {
+            filtered = filtered.filter(g => g.status === 'completed');
+        } else {
+            // For all other categories, hide completed goals
+            filtered = filtered.filter(g => g.status !== 'completed');
+            
+            // Then apply category filter if not showing all
+            if (selectedCategory !== 'all') {
+                filtered = filtered.filter(g => g.category === selectedCategory);
+            }
         }
 
+        // Apply search filter if query exists
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(g =>
@@ -124,20 +137,6 @@
         }
 
         return filtered;
-    }
-
-    async function handleGoalComplete(goal) {
-        // Update goal status and show celebration
-        const { error: err } = await supabase
-            .from('goals')
-            .update({ status: 'completed' })
-            .eq('id', goal.id);
-
-        if (!err) {
-            showConfetti = true;
-            setTimeout(() => showConfetti = false, 3000);
-            await loadGoals();
-        }
     }
 </script>
 
@@ -155,10 +154,6 @@
                     <button class="add-btn step" on:click={() => showStepForm = true}>
                         <i class="fas fa-list-ol"></i>
                         Step by Step
-                    </button>
-                    <button class="add-btn visual" on:click={() => showVisualForm = true}>
-                        <i class="fas fa-th-large"></i>
-                        Visual Builder
                     </button>
                 </div>
                 <div class="view-options">
@@ -274,20 +269,10 @@
         }}
     />
 
-    <VisualGoalForm
-        bind:show={showVisualForm}
-        on:goalCreated={async () => {
-            await loadGoals();
-            calculateStats();
-        }}
-    />
-
     <!-- Main Content -->
     <main class="main-content" in:fly="{{ y: 20, duration: 400, delay: 600 }}">
         {#if loading}
-            <div class="loading">Loading your goals...</div>
-        {:else if error}
-            <div class="error">{error}</div>
+            <div class="loading">Loading goals...</div>
         {:else}
             {#if selectedView === 'grid'}
                 <div class="goals-grid">
@@ -295,6 +280,7 @@
                         <GoalCard
                             {goal}
                             on:complete={handleGoalComplete}
+                            on:update={loadGoals}
                         />
                     {/each}
                 </div>
@@ -305,6 +291,23 @@
             {/if}
         {/if}
     </main>
+
+    <!-- View Completed Goals Button -->
+    <div class="completed-goals-button-container">
+        <button 
+            class="completed-goals-button"
+            on:click={() => showCompletedGoals = true}
+        >
+            <i class="fas fa-trophy"></i>
+            View Completed Goals
+        </button>
+    </div>
+
+    <!-- Modals -->
+    <CompletedGoalsModal
+        bind:show={showCompletedGoals}
+        goals={goals.filter(g => g.status === 'completed')}
+    />
 
     <!-- Celebration Confetti -->
     {#if showConfetti}
@@ -380,15 +383,6 @@
 
     .add-btn.step:hover {
         background: #6b21a8;
-    }
-
-    .add-btn.visual {
-        background: #059669;
-        color: white;
-    }
-
-    .add-btn.visual:hover {
-        background: #047857;
     }
 
     .stats-overview {
@@ -501,6 +495,38 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 1.5rem;
+    }
+
+    .completed-goals-button-container {
+        display: flex;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+
+    .completed-goals-button {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: #4c1d95;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 2rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .completed-goals-button:hover {
+        background: #6b21a8;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .completed-goals-button:active {
+        transform: translateY(0);
     }
 
     .confetti-container {

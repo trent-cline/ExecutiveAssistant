@@ -5,60 +5,55 @@
     import { goto } from '$app/navigation';
     import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
     import type { Column } from '$lib/components/DatabaseTable/types';
+    import NewItemModal from './NewItemModal.svelte';
 
     interface ShoppingItem {
         id: string;
+        created_at: string;
         name: string;
-        description: string;
+        summary: string;
         status: 'Not Started' | 'In Progress' | 'Done';
         priority: 'Low' | 'Medium' | 'High';
         quantity: number;
+        original_note_id?: string;
+        user_id: string;
         checked: boolean;
-        created_at: string;
     }
 
     let items: ShoppingItem[] = [];
     let loading = true;
     let error = '';
     let activeView = 'checklist'; // or 'database'
+    let showNewItemModal = false;
 
     const columns: Column[] = [
         { 
-            id: 'name', 
-            label: 'Item', 
-            width: '200px', 
-            sortable: true 
+            id: 'name',
+            key: 'name',
+            label: 'Name',
+            width: '200px',
+            sortable: true
         },
-        { 
-            id: 'description', 
-            label: 'Description', 
-            width: '300px', 
-            sortable: true 
+        {
+            id: 'summary',
+            key: 'summary',
+            label: 'Summary',
+            width: '300px',
+            sortable: true
         },
-        { 
-            id: 'quantity', 
-            label: 'Quantity', 
-            width: '120px', 
-            sortable: true 
+        {
+            id: 'quantity',
+            key: 'quantity',
+            label: 'Quantity',
+            width: '120px',
+            sortable: true
         },
-        { 
-            id: 'status', 
-            label: 'Status', 
+        {
+            id: 'priority',
+            key: 'priority',
+            label: 'Priority',
             width: '150px',
-            filterOptions: ['Not Started', 'In Progress', 'Done'],
-            template: (value) => {
-                const colors = {
-                    'Not Started': '#6c757d',
-                    'In Progress': '#007bff',
-                    'Done': '#28a745'
-                };
-                return `<span style="color: ${colors[value]}">${value}</span>`;
-            }
-        },
-        { 
-            id: 'priority', 
-            label: 'Priority', 
-            width: '150px',
+            sortable: true,
             filterOptions: ['Low', 'Medium', 'High'],
             template: (value) => {
                 const colors = {
@@ -69,9 +64,34 @@
                 return `<span style="color: ${colors[value]}">${value}</span>`;
             }
         },
+        {
+            id: 'status',
+            key: 'status',
+            label: 'Status',
+            width: '150px',
+            sortable: true,
+            filterOptions: ['Not Started', 'In Progress', 'Done'],
+            template: (value) => {
+                const colors = {
+                    'Not Started': '#6c757d',
+                    'In Progress': '#007bff',
+                    'Done': '#28a745'
+                };
+                return `<span style="color: ${colors[value]}">${value}</span>`;
+            }
+        },
+        {
+            id: 'checked',
+            key: 'checked',
+            label: 'Checked',
+            width: '100px',
+            sortable: true,
+            template: (value) => value ? '✓' : '✗'
+        },
         { 
-            id: 'actions', 
-            label: '', 
+            id: 'actions',
+            key: 'actions',
+            label: '',
             width: '100px',
             actions: [
                 { icon: 'edit', label: 'Edit', action: 'edit' },
@@ -228,7 +248,7 @@
                 <i class="fas fa-table"></i>
                 Database View
             </button>
-            <button class="new-button" on:click={() => goto('/shopping/new')}>
+            <button class="new-button" on:click={() => showNewItemModal = true}>
                 <i class="fas fa-plus"></i>
                 New Item
             </button>
@@ -264,7 +284,7 @@
                                             {item.priority}
                                         </span>
                                     </div>
-                                    <p>{item.description}</p>
+                                    <p>{item.summary}</p>
                                 </div>
                             </div>
                             <div class="item-actions">
@@ -294,6 +314,13 @@
             on:rowAction={handleRowAction}
         />
     {/if}
+
+    <NewItemModal 
+        bind:show={showNewItemModal}
+        on:itemAdded={(event) => {
+            items = [event.detail, ...items];
+        }}
+    />
 </div>
 
 <style>

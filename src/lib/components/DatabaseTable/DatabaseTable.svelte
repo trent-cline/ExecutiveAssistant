@@ -664,24 +664,54 @@
         border-collapse: separate;
         border-spacing: 0;
         font-size: 0.875rem;
-        table-layout: auto;
+    }
+
+    td, th {
+        padding: 0.75rem 0.5rem;
+        vertical-align: top;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: normal;
+        word-wrap: break-word;
     }
 
     @media (max-width: 768px) {
-        .table-fixed {
-            table-layout: auto;
-            min-width: max-content;
+        table {
+            font-size: 0.8125rem;
         }
 
-        td {
-            min-width: 100px;
+        td, th {
+            padding: 0.5rem 0.25rem;
+            min-width: 0;
             max-width: none;
+        }
+
+        /* Hide less important columns on mobile */
+        .hide-mobile {
+            display: none;
+        }
+
+        /* Ensure content wraps on mobile */
+        td > div, th > div {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .action-cell {
-            min-width: auto;
-            width: auto;
+        /* Allow certain columns to wrap text */
+        td.wrap-content > div, th.wrap-content > div {
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        /* Make action buttons more compact */
+        .action-buttons {
+            gap: 0.25rem;
+        }
+
+        .action-button {
+            width: 1.75rem;
+            height: 1.75rem;
         }
     }
 

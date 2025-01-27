@@ -180,29 +180,29 @@
     <title>Pillar Apps - Company Dashboard</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="page-container">
+    <div class="content">
         <!-- Header Section -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Pillar Apps, LLC</h1>
-                <p class="mt-1 text-gray-500">Financial Dashboard & Funding Management</p>
+        <div class="header">
+            <div class="header-content">
+                <h1>Pillar Apps, LLC</h1>
+                <p>Financial Dashboard & Funding Management</p>
             </div>
             <button
-                class="inline-flex items-center px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                class="add-button"
                 on:click={() => showAddForm = !showAddForm}
             >
-                <i class="fas fa-plus mr-2" aria-hidden="true"></i>
+                <i class="fas fa-plus"></i>
                 {showAddForm ? 'Cancel' : 'Add Funding Source'}
             </button>
         </div>
 
-        <!-- Two Column Layout -->
-        <div class="flex flex-col lg:flex-row gap-8">
-            <!-- Main Content Column -->
-            <div class="flex-1 space-y-8">
-                <!-- Stats Overview -->
-                <GridContainer className="lg:grid-cols-4">
+        <!-- Main Grid Layout -->
+        <div class="main-grid">
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Stats Grid -->
+                <div class="stats-grid">
                     <StatCard
                         title="Total Funding"
                         value={'$' + totalFunding.toLocaleString()}
@@ -231,71 +231,62 @@
                         icon="fas fa-chart-bar"
                         color="blue"
                     />
-                </GridContainer>
+                </div>
 
-                <!-- Charts Section -->
-                <GridContainer cols="grid-cols-1" mdCols="md:grid-cols-2">
+                <!-- Charts Grid -->
+                <div class="charts-grid">
                     <Card>
-                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Funding Progress</h3>
-                        <div class="relative" style="height: 300px;">
+                        <h3>Funding Progress</h3>
+                        <div class="chart-container">
                             <canvas id="fundingProgress"></canvas>
                         </div>
                     </Card>
                     <Card>
-                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Funding Distribution</h3>
-                        <div class="relative" style="height: 300px;">
+                        <h3>Funding Distribution</h3>
+                        <div class="chart-container">
                             <canvas id="fundingDistribution"></canvas>
                         </div>
                     </Card>
-                </GridContainer>
+                </div>
 
                 <!-- Funding Sources List -->
                 <Card>
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-semibold">Funding Sources</h2>
-                        <div class="flex gap-2">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-800">
-                                <i class="fas fa-user-tie mr-1"></i> Investors
+                    <div class="funding-header">
+                        <h2>Funding Sources</h2>
+                        <div class="funding-tags">
+                            <span class="tag investor">
+                                <i class="fas fa-user-tie"></i> Investors
                             </span>
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-emerald-100 text-emerald-800">
-                                <i class="fas fa-briefcase mr-1"></i> Clients
+                            <span class="tag client">
+                                <i class="fas fa-briefcase"></i> Clients
                             </span>
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-amber-100 text-amber-800">
-                                <i class="fas fa-star mr-1"></i> Other
+                            <span class="tag other">
+                                <i class="fas fa-star"></i> Other
                             </span>
                         </div>
                     </div>
-                    <div class="space-y-4">
+                    <div class="funding-list">
                         {#each fundingSources as source (source.id)}
-                            <div
-                                transition:fade
-                                class="p-4 rounded-lg border border-gray-200 hover:border-gray-300 bg-white hover:shadow-md transition-all duration-200"
-                            >
-                                <div class="flex justify-between items-start">
+                            <div class="funding-item" transition:fade>
+                                <div class="item-header">
                                     <div>
-                                        <h3 class="font-medium text-lg text-gray-900">{source.name}</h3>
-                                        <span class="inline-flex items-center px-3 py-1 text-sm rounded-full mt-1 {
-                                            source.type === 'investor' ? 'bg-indigo-100 text-indigo-800' :
-                                            source.type === 'client' ? 'bg-emerald-100 text-emerald-800' :
-                                            'bg-amber-100 text-amber-800'
-                                        }">
-                                            <i class="mr-1 {
-                                                source.type === 'investor' ? 'fas fa-user-tie' :
-                                                source.type === 'client' ? 'fas fa-briefcase' :
-                                                'fas fa-star'
+                                        <h3>{source.name}</h3>
+                                        <span class="source-type {source.type}">
+                                            <i class="fas {
+                                                source.type === 'investor' ? 'fa-user-tie' :
+                                                source.type === 'client' ? 'fa-briefcase' :
+                                                'fa-star'
                                             }"></i>
                                             {source.type}
                                         </span>
                                     </div>
-                                    <div class="text-right">
-                                        <span class="font-semibold text-lg text-gray-900">${Number(source.amount).toLocaleString()}</span>
-                                        <div class="text-xs text-gray-500 mt-1">
-                                            Added: {new Date(source.created_at).toLocaleDateString()}
-                                        </div>
+                                    <div class="amount-info">
+                                        <span class="amount">${Number(source.amount).toLocaleString()}</span>
+                                        <div class="date">Added: {new Date(source.created_at).toLocaleDateString()}</div>
                                     </div>
                                 </div>
                                 {#if source.notes}
-                                    <p class="text-sm text-gray-600 mt-2 pl-4 border-l-2 border-gray-200">{source.notes}</p>
+                                    <p class="notes">{source.notes}</p>
                                 {/if}
                             </div>
                         {/each}
@@ -303,17 +294,19 @@
                 </Card>
             </div>
 
-            <!-- Side Panel -->
-            <div class="lg:w-1/3 space-y-8">
-                 <!-- Company Tools -->
-                 <Card>
-                    <h3 class="text-lg font-semibold mb-4">Company Tools</h3>
-                    <div class="space-y-2">
-                        <a 
-                            href="/company/cloud-costs"
-                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md transition-colors duration-150 ease-in-out"
-                        >
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Company Tools -->
+                <Card>
+                    <h3>Company Tools</h3>
+                    <div class="tools-list">
+                        <a href="/company/cloud-costs" class="tool-link">
+                            <i class="fas fa-cloud"></i>
                             Cloud Cost Calculator
+                        </a>
+                        <a href="/company/structure" class="tool-link">
+                            <i class="fas fa-project-diagram"></i>
+                            Company Structure
                         </a>
                     </div>
                 </Card>
@@ -322,7 +315,7 @@
                 {#if showAddForm}
                     <div transition:slide>
                         <Card>
-                            <h2 class="text-xl font-semibold mb-4">Add New Funding Source</h2>
+                            <h2>Add New Funding Source</h2>
                             {#if error}
                                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">
                                     <span class="block sm:inline">{error}</span>
@@ -385,19 +378,19 @@
 
                 <!-- Quick Stats -->
                 <Card>
-                    <h3 class="text-lg font-semibold mb-4">Quick Stats</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <div class="text-sm text-gray-500">Average Investment</div>
-                            <div class="text-xl font-semibold">${(totalFunding / (fundingSources.length || 1)).toLocaleString()}</div>
+                    <h3>Quick Stats</h3>
+                    <div class="quick-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Average Investment</div>
+                            <div class="stat-value">${(totalFunding / (fundingSources.length || 1)).toLocaleString()}</div>
                         </div>
-                        <div>
-                            <div class="text-sm text-gray-500">Investor Count</div>
-                            <div class="text-xl font-semibold">{fundingSources.filter(s => s.type === 'investor').length}</div>
+                        <div class="stat-item">
+                            <div class="stat-label">Investor Count</div>
+                            <div class="stat-value">{fundingSources.filter(s => s.type === 'investor').length}</div>
                         </div>
-                        <div>
-                            <div class="text-sm text-gray-500">Client Count</div>
-                            <div class="text-xl font-semibold">{fundingSources.filter(s => s.type === 'client').length}</div>
+                        <div class="stat-item">
+                            <div class="stat-label">Client Count</div>
+                            <div class="stat-value">{fundingSources.filter(s => s.type === 'client').length}</div>
                         </div>
                     </div>
                 </Card>
@@ -407,8 +400,295 @@
 </div>
 
 <style>
-    :global(.chart-container) {
-        position: relative;
+    .page-container {
+        min-height: 100vh;
+        background-color: #f9fafb;
+        padding: 2rem;
+        border-left: 1px solid #e5e7eb;
+    }
+
+    .content {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .header h1 {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #111827;
+    }
+
+    .header p {
+        color: #6b7280;
+        margin-top: 0.5rem;
+    }
+
+    .add-button {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background-color: #4f46e5;
+        color: white;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: background-color 0.2s;
+    }
+
+    .add-button:hover {
+        background-color: #4338ca;
+    }
+
+    .add-button i {
+        margin-right: 0.5rem;
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 2rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stats-grid :global(.card) {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s;
+    }
+
+    .stats-grid :global(.card:hover) {
+        border-color: #d1d5db;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .charts-grid :global(.card) {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s;
+    }
+
+    .charts-grid :global(.card:hover) {
+        border-color: #d1d5db;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-container {
         height: 300px;
+        position: relative;
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 0.5rem;
+    }
+
+    .funding-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .funding-tags {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+    }
+
+    .tag i {
+        margin-right: 0.25rem;
+    }
+
+    .tag.investor {
+        background-color: #e0e7ff;
+        color: #4f46e5;
+    }
+
+    .tag.client {
+        background-color: #d1fae5;
+        color: #059669;
+    }
+
+    .tag.other {
+        background-color: #fef3c7;
+        color: #d97706;
+    }
+
+    .funding-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .funding-item {
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        background-color: white;
+        transition: all 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .funding-item:hover {
+        border-color: #d1d5db;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .source-type {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .amount-info {
+        text-align: right;
+    }
+
+    .amount {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .date {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .notes {
+        margin-top: 0.5rem;
+        padding: 0.5rem 0 0.5rem 1rem;
+        border-left: 2px solid #e5e7eb;
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .sidebar :global(.card) {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s;
+    }
+
+    .sidebar :global(.card:hover) {
+        border-color: #d1d5db;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .tool-link {
+        display: block;
+        padding: 0.5rem 1rem;
+        color: #4b5563;
+        border-radius: 0.375rem;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .tool-link:hover {
+        background-color: #f3f4f6;
+        color: #111827;
+        border-color: #e5e7eb;
+    }
+
+    .stat-item {
+        padding: 1rem;
+        background-color: #f9fafb;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1280px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 1024px) {
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .page-container {
+            padding: 1rem;
+        }
+
+        .header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .funding-header {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>

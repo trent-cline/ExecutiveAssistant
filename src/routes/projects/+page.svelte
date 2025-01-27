@@ -334,12 +334,10 @@
             filter: true,
             sort: true,
             pagination: true,
-            add: true,
             edit: true,
             delete: true
         },
         permissions: {
-            canAdd: true,
             canEdit: (row) => true,
             canDelete: (row) => true
         },

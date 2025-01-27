@@ -20,7 +20,9 @@
         '/active-projects',
         '/dlltw-notes',
         '/private-notes',
-        '/company'
+        '/company',
+        '/company/structure',
+        '/company/cloud-costs'
     ];
 
     onMount(() => {

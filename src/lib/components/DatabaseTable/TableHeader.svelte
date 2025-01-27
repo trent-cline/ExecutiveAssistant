@@ -96,30 +96,34 @@
                 class:sorted={sortState?.column === column.id}
                 class:asc={sortState?.direction === 'asc'}
                 class:resizing={resizingColumn === column.id}
+                class:hide-mobile={column.hideMobile}
+                class:wrap-content={column.wrap}
                 data-column-id={column.id}
                 style="width: {columnWidths[column.id] || column.width || 'auto'}"
             >
-                <div class="th-content" on:click={() => handleSortClick(column)}>
-                    {column.label}
+                <div class="header-content">
+                    <span class="header-text">{column.label}</span>
                     {#if column.sortable !== false}
-                        <span class="sort-icon">
-                            {#if sortState?.column === column.id}
-                                <i class="fas fa-sort-{sortState.direction === 'asc' ? 'up' : 'down'}"></i>
-                            {:else}
-                                <i class="fas fa-sort"></i>
-                            {/if}
-                        </span>
+                        <button 
+                            class="sort-button" 
+                            on:click={() => handleSortClick(column)}
+                            title="Sort by {column.label}"
+                        >
+                            <i class="fas fa-sort{sortState?.column === column.id ? (sortState.direction === 'asc' ? '-up' : '-down') : ''}"></i>
+                        </button>
                     {/if}
                 </div>
-                <div 
-                    class="resize-handle"
-                    on:mousedown|stopPropagation={(e) => handleMouseDown(e, column.id)}
-                ></div>
+                {#if column.resizable !== false}
+                    <div
+                        class="resize-handle"
+                        on:mousedown={(e) => handleMouseDown(e, column.id)}
+                    ></div>
+                {/if}
             </th>
         {/each}
 
-        {#if config?.features?.edit || config?.features?.delete || config?.customActions}
-            <th class="actions-header">Actions</th>
+        {#if config.features?.edit || config.features?.delete || config.actions}
+            <th class="action-cell">Actions</th>
         {/if}
     </tr>
 </thead>
@@ -127,62 +131,72 @@
 <style>
     th {
         position: relative;
-        padding: 0.75rem 1rem;
+        padding: 0.75rem 0.5rem;
         text-align: left;
         font-weight: 600;
-        color: #1f2937;
-        background-color: #f8fafc;
+        color: #4a5568;
+        background: #f8fafc;
         border-bottom: 2px solid #e2e8f0;
         user-select: none;
     }
 
-    .th-content {
+    .header-content {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        cursor: default;
-        pointer-events: auto;
+        gap: 0.25rem;
     }
 
-    .sortable .th-content {
+    .header-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sort-button {
+        padding: 0.25rem;
+        background: transparent;
+        border: none;
+        color: #a0aec0;
         cursor: pointer;
+        transition: color 0.2s;
     }
 
-    .sort-icon {
-        color: #94a3b8;
+    .sort-button:hover {
+        color: #4a5568;
     }
 
-    .sorted .sort-icon {
-        color: #3b82f6;
+    th.sorted .sort-button {
+        color: #4a5568;
     }
 
     .resize-handle {
         position: absolute;
-        right: -2px;
+        right: 0;
         top: 0;
         bottom: 0;
         width: 4px;
-        background-color: transparent;
         cursor: col-resize;
-        transition: background-color 0.2s;
-        z-index: 10;
+        background: transparent;
+        transition: background 0.2s;
     }
 
     .resize-handle:hover,
-    .resizing .resize-handle {
-        background-color: #3b82f6;
+    th.resizing .resize-handle {
+        background: #e2e8f0;
     }
 
-    th:hover .resize-handle {
-        background-color: #e2e8f0;
-    }
+    @media (max-width: 768px) {
+        th {
+            padding: 0.5rem 0.25rem;
+            font-size: 0.8125rem;
+        }
 
-    .actions-header {
-        width: 150px;
-        text-align: center;
-    }
+        .sort-button {
+            padding: 0.125rem;
+        }
 
-    .resizing {
-        background-color: #f1f5f9;
+        .resize-handle {
+            display: none;
+        }
     }
 </style>

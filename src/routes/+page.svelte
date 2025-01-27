@@ -157,20 +157,25 @@
 
             const data = await response.json();
             console.log('Transcription result:', data);
+            
+            const deviceInfo = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+            };
 
             const timestamp = new Date().toISOString();
             const localid = generateUUID();
             const storageKey = `note_${localid}`;
 
-            const note = {
-                name: data.text,
-                localid: localid,
-                created_at: timestamp,
+            // First get the analysis
+            status = 'Analyzing transcription...';
+            let analysis = {
+                category: 'Note',
+                priority: 'Low',
+                summary: '',
                 status: 'Not Started'
             };
-
-            status = 'Analyzing transcription...';
-            let updatedNote = { ...note };
             
             try {
                 const analysisResponse = await fetch('/api/analyze', {
@@ -184,56 +189,87 @@
                 if (!analysisResponse.ok) {
                     console.warn('Failed to analyze note, saving with basic information');
                 } else {
-                    const analysis = await analysisResponse.json();
-                    updatedNote = { ...note, ...analysis };
+                    const analysisData = await analysisResponse.json();
+                    analysis = { ...analysis, ...analysisData };
                 }
             } catch (analyzeError) {
                 console.warn('Error analyzing note:', analyzeError);
             }
 
-            localStorage.setItem(storageKey, JSON.stringify(updatedNote));
-            notes = [updatedNote, ...notes];
-            localStorage.setItem('voice-notes', JSON.stringify(notes));
-
+            // Save transcription to database with analysis results
             try {
-                status = 'Saving to private notes...';
-                const { error: privateNoteError } = await supabase
-                    .from('private_notes')
-                    .insert([
-                        {
-                            content: data.text,
-                            created_at: timestamp,
-                            analyzed: false
-                        }
-                    ]);
+                status = 'Saving note...';
+                
+                if ($user) {
+                    // For authenticated users, save to private_notes and brain_dump_database
+                    const { error: privateNoteError } = await supabase
+                        .from('private_notes')
+                        .insert([
+                            {
+                                content: data.text,
+                                created_at: timestamp,
+                                analyzed: true,
+                                source_type: 'voice'
+                            }
+                        ]);
 
-                if (privateNoteError) throw privateNoteError;
+                    if (privateNoteError) throw privateNoteError;
 
-                const notionResponse = await fetch('/api/supabase', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updatedNote)
-                });
+                    // Also save to brain_dump_database with full analysis
+                    const { error: brainDumpError } = await supabase
+                        .from('brain_dump_database')
+                        .insert([
+                            {
+                                name: data.text,
+                                summary: analysis.summary,
+                                status: analysis.status,
+                                priority: analysis.priority,
+                                category: analysis.category,
+                                created_at: timestamp,
+                                localid: localid
+                            }
+                        ]);
 
-                if (!notionResponse.ok) {
-                    const errorData = await notionResponse.json();
-                    throw new Error(errorData.error || 'Failed to save to database');
+                    if (brainDumpError) throw brainDumpError;
+                } else {
+                    // For non-authenticated users, save to public_notes
+                    const { error: publicNoteError } = await supabase
+                        .from('public_notes')
+                        .insert([
+                            {
+                                content: data.text,
+                                created_at: timestamp,
+                                analyzed: true,
+                                source_type: 'voice',
+                                device_info: deviceInfo,
+                                status: analysis.status,
+                                priority: analysis.priority,
+                                category: analysis.category,
+                                summary: analysis.summary
+                            }
+                        ]);
+
+                    if (publicNoteError) throw publicNoteError;
                 }
 
-                const notionData = await notionResponse.json();
-                updatedNote.id = notionData.noteId;
-                localStorage.setItem(storageKey, JSON.stringify(updatedNote));
-                notes = notes.map(n => n.localid === localid ? updatedNote : n);
+                // Save locally
+                const note = {
+                    name: data.text,
+                    localid: localid,
+                    created_at: timestamp,
+                    ...analysis
+                };
+
+                localStorage.setItem(storageKey, JSON.stringify(note));
+                notes = [note, ...notes];
                 localStorage.setItem('voice-notes', JSON.stringify(notes));
+
+                status = '';
             } catch (dbError) {
                 console.error('Failed to save to database:', dbError);
                 status = `Warning: Note saved locally but not to database (${dbError.message})`;
                 return;
             }
-
-            status = '';
         } catch (error: any) {
             console.error('Error saving note:', error);
             status = `Error: ${error.message}`;
