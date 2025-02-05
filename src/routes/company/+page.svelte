@@ -309,8 +309,8 @@
                         <div class="chart-header">
                             <h3>Funding Progress</h3>
                             <div class="chart-actions">
-                                <button class="chart-button">
-                                    <i class="fas fa-expand"></i>
+                                <button class="chart-button" aria-label="Expand funding progress chart">
+                                    <i class="fas fa-expand" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -322,8 +322,8 @@
                         <div class="chart-header">
                             <h3>Funding Distribution</h3>
                             <div class="chart-actions">
-                                <button class="chart-button">
-                                    <i class="fas fa-expand"></i>
+                                <button class="chart-button" aria-label="Expand funding distribution chart">
+                                    <i class="fas fa-expand" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
@@ -335,8 +335,8 @@
                         <div class="chart-header">
                             <h3>Equity Distribution</h3>
                             <div class="chart-actions">
-                                <button class="chart-button">
-                                    <i class="fas fa-expand"></i>
+                                <button class="chart-button" aria-label="Expand equity distribution chart">
+                                    <i class="fas fa-expand" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>

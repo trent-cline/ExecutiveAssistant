@@ -241,11 +241,18 @@
                     class="chapter-item"
                     class:active={selectedChapter?.id === chapter.id}
                     draggable="true"
+                    role="listitem"
                     on:dragstart={(e) => handleDragStart(chapter, e)}
                     on:dragover={handleDragOver}
                     on:drop={() => handleDrop(chapter)}
                 >
-                    <div class="chapter-content" on:click={() => selectChapter(chapter)}>
+                    <div 
+                        class="chapter-content" 
+                        role="button"
+                        tabindex="0"
+                        on:click={() => selectChapter(chapter)}
+                        on:keydown={(e) => e.key === 'Enter' && selectChapter(chapter)}
+                    >
                         {#if editingTitle && selectedChapter?.id === chapter.id}
                             <input 
                                 type="text" 

@@ -59,11 +59,11 @@
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click|self={close}>
+    <div class="modal-backdrop" on:click|self={close} role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal">
             <div class="modal-header">
-                <h2>Add New Item</h2>
-                <button class="close-button" on:click={close}>×</button>
+                <h2 id="modal-title">Add New Item</h2>
+                <button class="close-button" on:click={close} aria-label="Close modal">×</button>
             </div>
 
             {#if error}

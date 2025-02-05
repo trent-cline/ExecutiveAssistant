@@ -74,6 +74,7 @@
             }
 
             // Save to brain_dump_database with analysis results
+            const localId = crypto.randomUUID();
             const { error: brainDumpError } = await supabase
                 .from('brain_dump_database')
                 .insert([
@@ -84,7 +85,7 @@
                         priority: priority,
                         category: category,
                         created_at: timestamp,
-                        localid: crypto.randomUUID(),
+                        localid: localId,
                         user_id: 'public'
                     }
                 ]);
@@ -114,7 +115,6 @@
             class="floating-button" 
             on:click={() => {
                 isOpen = true;
-                isRecording = true;
             }}
             aria-label="Open voice recorder"
             transition:fade

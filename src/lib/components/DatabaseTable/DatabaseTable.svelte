@@ -32,6 +32,17 @@
     let draggedRow: any = null;
     let dragOverRow: any = null;
 
+    $: {
+        data = [...initialData];
+        applyFiltersAndSort();
+    }
+
+    $: {
+        if (filteredData.length > 0) {
+            dispatch('dataChange', filteredData);
+        }
+    }
+
     $: pageSize = config.pageSize || 10;
     $: totalPages = Math.ceil(filteredData.length / pageSize);
     $: paginatedData = getPaginatedData(filteredData);
@@ -224,26 +235,40 @@
     }
 
     function applyFiltersAndSort() {
-        filteredData = data.filter(row => {
-            if (!searchTerm) return true;
-            return config.columns.some(col => {
-                const value = row[col.id];
-                return value && String(value).toLowerCase().includes(searchTerm.toLowerCase());
-            });
+        let result = [...data];
+
+        // Apply search filter
+        if (searchTerm) {
+            result = result.filter(row => 
+                Object.values(row).some(value => 
+                    String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                )
+            );
+        }
+
+        // Apply column filters
+        Object.entries(filterState).forEach(([column, filter]) => {
+            if (filter?.value) {
+                result = result.filter(row => 
+                    String(row[column]).toLowerCase().includes(filter.value.toLowerCase())
+                );
+            }
         });
 
+        // Apply sort
         if (sortState) {
-            filteredData = [...filteredData].sort((a, b) => {
-                const aVal = a[sortState.column];
-                const bVal = b[sortState.column];
-                const direction = sortState.direction === 'asc' ? 1 : -1;
-                
-                if (typeof aVal === 'number' && typeof bVal === 'number') {
-                    return (aVal - bVal) * direction;
-                }
-                return String(aVal).localeCompare(String(bVal)) * direction;
+            const { column, direction } = sortState;
+            result.sort((a, b) => {
+                const aVal = a[column];
+                const bVal = b[column];
+                return direction === 'asc' 
+                    ? String(aVal).localeCompare(String(bVal))
+                    : String(bVal).localeCompare(String(aVal));
             });
         }
+
+        filteredData = result;
+        currentPage = 1;
     }
 
     function getPaginatedData(data: any[]) {
@@ -252,7 +277,8 @@
 
     async function handleAdd() {
         editingRow = {
-            user_id: $user?.id // Set user_id for new records
+            user_id: $user?.id, // Set user_id for new records
+            localid: crypto.randomUUID() // Generate localid for new records using Web Crypto API
         };
         showEditModal = true;
     }
@@ -421,6 +447,10 @@
 
     function showAnalytics(row: any) {
         // TO DO: Implement analytics functionality
+    }
+
+    function handleRowAction(action: string, row: any) {
+        dispatch('rowAction', { action, row });
     }
 </script>
 

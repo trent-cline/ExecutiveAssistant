@@ -40,13 +40,13 @@
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click|self={closeModal} transition:fade>
+    <div class="modal-backdrop" on:click|self={closeModal} role="dialog" aria-modal="true" aria-labelledby="modal-title" transition:fade>
         <div class="modal-content" transition:slide>
             <Card>
                 <div class="modal-header">
-                    <h2>Add New Funding Source</h2>
-                    <button class="close-button" on:click={closeModal}>
-                        <i class="fas fa-times"></i>
+                    <h2 id="modal-title">Add New Funding Source</h2>
+                    <button class="close-button" on:click={closeModal} aria-label="Close modal">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 </div>
                 
@@ -58,8 +58,9 @@
                 
                 <form on:submit|preventDefault={handleSubmit} class="space-y-4">
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Source Name</label>
+                        <label for="source-name" class="block text-sm font-medium text-gray-700">Source Name</label>
                         <input
+                            id="source-name"
                             type="text"
                             bind:value={newSource.name}
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -69,8 +70,9 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Source Type</label>
+                        <label for="source-type" class="block text-sm font-medium text-gray-700">Source Type</label>
                         <select
+                            id="source-type"
                             bind:value={newSource.type}
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                         >
@@ -83,8 +85,9 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Amount ($)</label>
+                        <label for="source-amount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
                         <input
+                            id="source-amount"
                             type="number"
                             bind:value={newSource.amount}
                             min="0"
@@ -96,8 +99,9 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Equity Percentage (%)</label>
+                        <label for="source-equity" class="block text-sm font-medium text-gray-700">Equity Percentage (%)</label>
                         <input
+                            id="source-equity"
                             type="number"
                             bind:value={newSource.equity}
                             min="0"
@@ -110,8 +114,9 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Notes</label>
+                        <label for="source-notes" class="block text-sm font-medium text-gray-700">Notes</label>
                         <textarea
+                            id="source-notes"
                             bind:value={newSource.notes}
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             rows="3"

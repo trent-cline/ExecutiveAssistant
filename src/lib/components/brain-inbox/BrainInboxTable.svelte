@@ -20,20 +20,11 @@
         updated_at?: string;
     }
 
-    export let hideCompleted = true;
-
     let notes: Note[] = [];
     let loading = true;
     let error = '';
-    let displayedNotes: Note[] = [];
     let showEditModal = false;
     let editingNote: Note | null = null;
-
-    $: {
-        displayedNotes = hideCompleted 
-            ? notes.filter(note => note.status !== 'Done')
-            : notes;
-    }
 
     const columns: Column[] = [
         {
@@ -42,13 +33,12 @@
             width: '50px',
             template: (_, row) => `
                 <button 
-                    class="action-button ${row.status === 'Done' ? 'done' : 'not-done'}"
-                    title="${row.status === 'Done' ? 'Mark as not done' : 'Mark as done'}"
-                    aria-label="${row.status === 'Done' ? 'Mark task as not done' : 'Mark task as done'}"
-                    aria-pressed="${row.status === 'Done'}"
+                    class="action-button"
+                    title="Mark as done"
+                    aria-label="Mark task as done"
                     onclick="document.dispatchEvent(new CustomEvent('toggle-status', { detail: '${row.id}' }))"
                 >
-                    <i class="fas fa-check" aria-hidden="true"></i>
+                    <i class="fas fa-check"></i>
                 </button>
             `
         },
@@ -153,7 +143,7 @@
             pagination: true,
             edit: false,
             delete: false,
-            add: true,
+            add: false,
             select: false,
             export: false,
             import: false
@@ -162,9 +152,73 @@
             canView: () => true,
             canEdit: () => true,
             canDelete: () => true,
-            canAdd: true
+            canAdd: () => true
         }
     };
+
+    onMount(() => {
+        loadNotes();
+        document.addEventListener('toggle-status', handleToggleStatus);
+        document.addEventListener('edit-note', handleEdit);
+        document.addEventListener('send-to-dlltw', handleSendToDLLTW);
+        document.addEventListener('send-to-shopping', handleSendToShopping);
+        document.addEventListener('delete-note', handleDelete);
+
+        return () => {
+            document.removeEventListener('toggle-status', handleToggleStatus);
+            document.removeEventListener('edit-note', handleEdit);
+            document.removeEventListener('send-to-dlltw', handleSendToDLLTW);
+            document.removeEventListener('send-to-shopping', handleSendToShopping);
+            document.removeEventListener('delete-note', handleDelete);
+        };
+    });
+
+    async function loadNotes() {
+        loading = true;
+        error = '';
+        try {
+            const { data: notesData, error: fetchError } = await supabase
+                .from('brain_dump_database')
+                .select('*')
+                .not('status', 'eq', 'Done')
+                .order('created_at', { ascending: false });
+
+            if (fetchError) throw fetchError;
+            notes = notesData || [];
+        } catch (err) {
+            console.error('Error fetching notes:', err);
+            error = err.message;
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function handleToggleStatus(event: CustomEvent) {
+        const noteId = event.detail;
+        try {
+            const { error: updateError } = await supabase
+                .from('brain_dump_database')
+                .update({ 
+                    status: 'Done',
+                    completed_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', noteId);
+
+            if (updateError) throw updateError;
+            
+            // Update local state
+            notes = notes.filter(note => note.id !== noteId);
+        } catch (err) {
+            console.error('Error updating note status:', err);
+            error = err.message;
+        }
+    }
+
+    function handleDataChange(event: CustomEvent) {
+        const newData = event.detail;
+        notes = newData.filter(note => note.status !== 'Done');
+    }
 
     function handleEdit(event: CustomEvent) {
         const noteId = event.detail;
@@ -196,73 +250,6 @@
             await loadNotes();
         } catch (err) {
             console.error('Error updating note:', err);
-            error = err.message;
-        }
-    }
-
-    onMount(async () => {
-        await loadNotes();
-        
-        // Add event listener for edit note
-        document.addEventListener('edit-note', handleEdit);
-        document.addEventListener('toggle-status', handleToggleStatus);
-        document.addEventListener('send-to-dlltw', handleSendToDLLTW);
-        document.addEventListener('send-to-shopping', handleSendToShopping);
-        document.addEventListener('delete-note', handleDelete);
-
-        return () => {
-            document.removeEventListener('edit-note', handleEdit);
-            document.removeEventListener('toggle-status', handleToggleStatus);
-            document.removeEventListener('send-to-dlltw', handleSendToDLLTW);
-            document.removeEventListener('send-to-shopping', handleSendToShopping);
-            document.removeEventListener('delete-note', handleDelete);
-        };
-    });
-
-    async function loadNotes() {
-        loading = true;
-        error = '';
-        try {
-            const { data, error: fetchError } = await supabase
-                .from('brain_dump_database')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (fetchError) throw fetchError;
-
-            notes = data || [];
-            displayedNotes = hideCompleted 
-                ? notes.filter(note => note.status !== 'Done')
-                : notes;
-        } catch (err) {
-            console.error('Error fetching notes:', err);
-            error = err.message;
-        } finally {
-            loading = false;
-        }
-    }
-
-    async function handleToggleStatus(event: CustomEvent) {
-        const noteId = event.detail;
-        const note = notes.find(n => n.id === noteId);
-        if (!note) return;
-
-        const newStatus = note.status === 'Done' ? 'Not Started' : 'Done';
-        
-        try {
-            const { error } = await supabase
-                .from('brain_dump_database')
-                .update({ 
-                    status: newStatus,
-                    completed_at: newStatus === 'Done' ? new Date().toISOString() : null,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', noteId);
-
-            if (error) throw error;
-            await loadNotes();
-        } catch (err) {
-            console.error('Error updating note status:', err);
             error = err.message;
         }
     }
@@ -376,33 +363,6 @@
             error = err.message;
         }
     }
-
-    function handleSort(event: CustomEvent) {
-        const { column, direction } = event.detail;
-        notes = [...notes].sort((a, b) => {
-            const aVal = a[column] || '';
-            const bVal = b[column] || '';
-            return direction === 'asc' 
-                ? aVal.localeCompare(bVal)
-                : bVal.localeCompare(aVal);
-        });
-    }
-
-    function handleFilter(event: CustomEvent) {
-        const { column, selectedOptions } = event.detail;
-        if (selectedOptions.size === 0) return;
-        
-        notes = notes.filter(note => 
-            selectedOptions.has(note[column]?.toLowerCase() || '')
-        );
-    }
-
-    function handleRowAction(event: CustomEvent) {
-        const { action, row } = event.detail;
-        if (action === 'delete') {
-            handleDelete(row);
-        }
-    }
 </script>
 
 <div class="brain-inbox-table">
@@ -412,12 +372,14 @@
         </div>
     {/if}
 
-    <DatabaseTable
-        data={displayedNotes}
-        config={tableConfig}
-        {loading}
-        supabase={supabase}
-    />
+    <div class="database-container">
+        <DatabaseTable
+            config={tableConfig}
+            {supabase}
+            initialData={notes}
+            on:dataChange={handleDataChange}
+        />
+    </div>
 
     {#if showEditModal && editingNote}
         <EditNoteModal
@@ -613,6 +575,60 @@
 
         .action-button.not-done:hover {
             background-color: rgba(107, 114, 128, 0.3);
+        }
+    }
+
+    .database-container {
+        background: var(--surface-2, #ffffff);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+
+    .container-header {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--text-2, #6b7280);
+        cursor: pointer;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .database-container {
+            background: var(--surface-2, #1f2937);
+        }
+
+        .toggle-label {
+            color: var(--text-2, #9ca3af);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .database-container {
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+
+        .container-header {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
         }
     }
 </style>

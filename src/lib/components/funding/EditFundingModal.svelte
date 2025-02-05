@@ -43,12 +43,12 @@
     }
 </script>
 
-<div class="modal-backdrop" on:click|self={closeModal} transition:fade>
+<div class="modal-backdrop" on:click|self={closeModal} role="dialog" aria-modal="true" aria-labelledby="modal-title" transition:fade>
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Edit Funding Source</h2>
-            <button class="close-button" on:click={closeModal}>
-                <i class="fas fa-times"></i>
+            <h2 id="modal-title">Edit Funding Source</h2>
+            <button class="close-button" on:click={closeModal} aria-label="Close modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
         <form on:submit|preventDefault={handleSubmit} class="space-y-4">
