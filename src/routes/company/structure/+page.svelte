@@ -1,28 +1,49 @@
 <script lang="ts">
     import StructureChart from '$lib/components/structure/StructureChart.svelte';
     import CreateNodeModal from '$lib/components/structure/CreateNodeModal.svelte';
-    import type { StructureNode } from '$lib/types/structure';
+    import EditNodeModal from '$lib/components/structure/EditNodeModal.svelte';
+    import type { StructureNode, ChartLine } from '$lib/types/structure';
     import { onMount } from 'svelte';
     import { supabase } from '$lib/supabase';
     import Card from '$lib/components/containers/Card.svelte';
 
     let structureNodes: StructureNode[] = [];
-    let loading = true;
-    let error: string | null = null;
+    let structureLines: ChartLine[] = [];
+    let loading = false;
+    let error: Error | null = null;
     let showCreateModal = false;
+    let showEditModal = false;
+    let selectedNode: StructureNode | null = null;
+    let structureChart: any; // Reference to the chart component
 
     async function loadStructureData() {
         try {
-            const { data, error: err } = await supabase
+            loading = true;
+            error = null;
+
+            // Load nodes
+            const { data: nodes, error: nodesError } = await supabase
                 .from('structure_nodes')
                 .select('*')
                 .eq('user_id', 'public');
 
-            if (err) throw err;
-            structureNodes = data || [];
+            if (nodesError) throw nodesError;
+            structureNodes = nodes || [];
+
+            // Load lines
+            const { data: lines, error: linesError } = await supabase
+                .from('structure_lines')
+                .select('*');
+
+            if (linesError) throw linesError;
+            structureLines = lines.map(line => ({
+                ...line,
+                isSelected: false
+            }));
+
         } catch (e) {
-            console.error('Error loading structure:', e);
-            error = 'Failed to load structure data';
+            console.error('Error loading structure data:', e);
+            error = e instanceof Error ? e : new Error('Failed to load structure data');
         } finally {
             loading = false;
         }
@@ -66,6 +87,118 @@
         }
     }
 
+    async function handleEditNode(event: CustomEvent<Partial<StructureNode>>) {
+        const updatedNode = event.detail;
+        try {
+            const { data, error: err } = await supabase
+                .from('structure_nodes')
+                .update({
+                    name: updatedNode.name,
+                    type: updatedNode.type,
+                    description: updatedNode.description,
+                    connections: updatedNode.connections,
+                    platform: updatedNode.platform,
+                    ownership: updatedNode.ownership,
+                    monthly_revenue: updatedNode.monthlyRevenue
+                })
+                .eq('id', updatedNode.id)
+                .select()
+                .single();
+
+            if (err) throw err;
+
+            // Update local state with the database response
+            if (data) {
+                // Create a new array to force reactivity
+                structureNodes = [...structureNodes.map(node => 
+                    node.id === updatedNode.id 
+                        ? {
+                            ...node,
+                            name: data.name,
+                            type: data.type,
+                            description: data.description,
+                            connections: data.connections,
+                            platform: data.platform,
+                            ownership: data.ownership,
+                            monthlyRevenue: data.monthly_revenue
+                        }
+                        : node
+                )];
+            }
+            showEditModal = false;
+            selectedNode = null;
+        } catch (e) {
+            console.error('Error updating node:', e);
+            alert('Failed to update node. Please try again.');
+        }
+    }
+
+    async function handleLineCreated(event: CustomEvent<ChartLine>) {
+        const line = event.detail;
+        try {
+            const { data, error: err } = await supabase
+                .from('structure_lines')
+                .insert({
+                    id: line.id,
+                    x1: line.x1,
+                    y1: line.y1,
+                    x2: line.x2,
+                    y2: line.y2,
+                    is_dashed: line.isDashed,
+                    color: line.color
+                })
+                .select()
+                .single();
+
+            if (err) throw err;
+            if (data) {
+                structureLines = [...structureLines, { ...data, isDashed: data.is_dashed, isSelected: false }];
+            }
+        } catch (e) {
+            console.error('Error creating line:', e);
+            alert('Failed to save line. Please try again.');
+        }
+    }
+
+    async function handleLineUpdated(event: CustomEvent<ChartLine>) {
+        const line = event.detail;
+        try {
+            const { error: err } = await supabase
+                .from('structure_lines')
+                .update({
+                    x1: line.x1,
+                    y1: line.y1,
+                    x2: line.x2,
+                    y2: line.y2,
+                    is_dashed: line.isDashed,
+                    color: line.color
+                })
+                .eq('id', line.id);
+
+            if (err) throw err;
+            structureLines = structureLines.map(l => l.id === line.id ? line : l);
+        } catch (e) {
+            console.error('Error updating line:', e);
+            alert('Failed to update line. Please try again.');
+        }
+    }
+
+    async function handleLineDeleted(event: CustomEvent<string>) {
+        const lineId = event.detail;
+        try {
+            const { error: err } = await supabase
+                .from('structure_lines')
+                .delete()
+                .eq('id', lineId);
+
+            if (err) throw err;
+            structureLines = structureLines.filter(l => l.id !== lineId);
+        } catch (e) {
+            console.error('Error deleting line:', e);
+            alert('Failed to delete line. Please try again.');
+        }
+    }
+
     onMount(() => {
         loadStructureData();
     });
@@ -103,7 +236,26 @@
                 {error}
             </div>
         {:else if structureNodes.length > 0}
-            <StructureChart nodes={structureNodes} />
+            <div class="mb-6">
+                <StructureChart
+                    bind:this={structureChart}
+                    nodes={structureNodes}
+                    lines={structureLines}
+                    on:edit={(e) => {
+                        selectedNode = e.detail;
+                        showEditModal = true;
+                    }}
+                    on:lineCreated={handleLineCreated}
+                    on:lineUpdated={handleLineUpdated}
+                    on:lineDeleted={handleLineDeleted}
+                />
+            </div>
+            <div class="text-sm text-gray-600 mb-4">
+                <p>Hold Alt + Click and drag to create a line</p>
+                <p>Hold Alt + Shift + Click and drag to create a dashed line</p>
+                <p>Click line endpoints to move them</p>
+                <p>Press Delete to remove a selected line</p>
+            </div>
         {:else}
             <div class="text-gray-500 p-4 text-center">
                 No structure data available
@@ -139,6 +291,19 @@
     existingNodes={structureNodes}
     on:create={handleCreateNode}
 />
+
+{#if selectedNode}
+    <EditNodeModal
+        bind:show={showEditModal}
+        node={selectedNode}
+        existingNodes={structureNodes}
+        on:update={handleEditNode}
+        on:close={() => {
+            showEditModal = false;
+            selectedNode = null;
+        }}
+    />
+{/if}
 
 <style>
     .legend-item {
