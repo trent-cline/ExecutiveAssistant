@@ -67,12 +67,12 @@
         {
             id: 'actions',
             label: 'Actions',
-            width: '240px',
+            width: '280px',
             template: (_, row) => `
                 <div class="action-buttons" role="group" aria-label="Note actions">
                     <button 
                         class="action-button edit"
-                        title="Edit note"
+                        title="Edit"
                         aria-label="Edit note"
                         onclick="document.dispatchEvent(new CustomEvent('edit-note', { detail: '${row.id}' }))"
                     >
@@ -80,7 +80,7 @@
                     </button>
                     <button 
                         class="action-button delete"
-                        title="Delete note"
+                        title="Delete"
                         aria-label="Delete note"
                         onclick="document.dispatchEvent(new CustomEvent('delete-note', { detail: '${row.id}' }))"
                     >
@@ -101,6 +101,14 @@
                         onclick="document.dispatchEvent(new CustomEvent('send-to-dlltw', { detail: '${row.id}' }))"
                     >
                         <i class="fas fa-book" aria-hidden="true"></i>
+                    </button>
+                    <button 
+                        class="action-button lists"
+                        title="Send to Lists"
+                        aria-label="Send to Lists"
+                        onclick="document.dispatchEvent(new CustomEvent('send-to-lists', { detail: '${row.id}' }))"
+                    >
+                        <i class="fas fa-list" aria-hidden="true"></i>
                     </button>
                 </div>
             `
@@ -162,6 +170,7 @@
         document.addEventListener('edit-note', handleEdit);
         document.addEventListener('send-to-dlltw', handleSendToDLLTW);
         document.addEventListener('send-to-shopping', handleSendToShopping);
+        document.addEventListener('send-to-lists', handleSendToLists);
         document.addEventListener('delete-note', handleDelete);
 
         return () => {
@@ -169,6 +178,7 @@
             document.removeEventListener('edit-note', handleEdit);
             document.removeEventListener('send-to-dlltw', handleSendToDLLTW);
             document.removeEventListener('send-to-shopping', handleSendToShopping);
+            document.removeEventListener('send-to-lists', handleSendToLists);
             document.removeEventListener('delete-note', handleDelete);
         };
     });
@@ -325,6 +335,31 @@
             await loadNotes();
         } catch (err) {
             console.error('Error sending to shopping list:', err);
+            error = err.message;
+        }
+    }
+
+    async function handleSendToLists(event: CustomEvent) {
+        const noteId = event.detail;
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('lists')
+                .insert([{
+                    name: note.name,
+                    description: note.summary,
+                    category: 'other',
+                    status: 'active',
+                    priority: note.priority?.toLowerCase() || 'medium'
+                }]);
+
+            if (error) throw error;
+
+            // Show success message or handle UI update
+        } catch (err) {
+            console.error('Error sending to lists:', err);
             error = err.message;
         }
     }

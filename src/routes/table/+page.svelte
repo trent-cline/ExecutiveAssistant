@@ -10,7 +10,7 @@
 </script>
 
 <div class="container mx-auto px-4 py-6">
-    <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-4 gap-4 mb-6">
         <a 
             href="/goals" 
             class="btn-nav"
@@ -31,6 +31,13 @@
         >
             <i class="fas fa-book mr-2" aria-hidden="true"></i>
             DLLTW Notes
+        </a>
+        <a 
+            href="/lists" 
+            class="btn-nav"
+        >
+            <i class="fas fa-list mr-2" aria-hidden="true"></i>
+            Lists
         </a>
     </div>
 

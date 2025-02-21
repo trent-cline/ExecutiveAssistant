@@ -95,35 +95,6 @@
             </a>
 
             <a 
-                href="/goals" 
-                class:active={$page.url.pathname === '/goals'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-bullseye" aria-hidden="true"></i>
-                Goals
-            </a>
-
-            <a 
-                href="/shopping" 
-                class:active={$page.url.pathname === '/shopping'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-shopping-cart" aria-hidden="true"></i>
-                Shopping List
-            </a>
-
-
-
-            <a 
-                href="/dlltw" 
-                class:active={$page.url.pathname === '/dlltw'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-book" aria-hidden="true"></i>
-                DLLTW Notes
-            </a>
-
-            <a 
                 href="/company" 
                 class:active={$page.url.pathname === '/company'} 
                 on:click={() => isMobile && (isOpen = false)}
