@@ -51,7 +51,9 @@
     transition:slide={{ duration: 300, axis: 'x' }}
 >
     <div class="sidebar-header">
-        <h2>Executive Assistant</h2>
+        <a href="/" class="header-link">
+            <h2>Executive Assistant</h2>
+        </a>
         {#if isMobile}
             <button 
                 class="close-btn" 
@@ -64,18 +66,16 @@
     </div>
 
     <div class="nav-links">
-        {#if !$user}
+        {#if $user}
             <a 
-                href="/" 
-                class:active={$page.url.pathname === '/'} 
+                href="/voice-nav" 
+                class:active={$page.url.pathname === '/voice-nav'} 
                 on:click={() => isMobile && (isOpen = false)}
             >
-                <i class="fas fa-microphone" aria-hidden="true"></i>
-                Voice Notes
+                <i class="fas fa-microphone-alt" aria-hidden="true"></i>
+                Voice Navigation
             </a>
-        {/if}
 
-        {#if $user}
             <a 
                 href="/table" 
                 class:active={$page.url.pathname === '/table'} 
@@ -112,14 +112,7 @@
                 Shopping List
             </a>
 
-            <a 
-                href="/projects" 
-                class:active={$page.url.pathname === '/projects'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-tasks" aria-hidden="true"></i>
-                Active Projects
-            </a>
+
 
             <a 
                 href="/dlltw" 
@@ -139,6 +132,15 @@
                 Pillar Apps
             </a>
 
+            <a 
+                href="/projects" 
+                class:active={$page.url.pathname === '/projects'} 
+                on:click={() => isMobile && (isOpen = false)}
+            >
+                <i class="fas fa-tasks" aria-hidden="true"></i>
+                Active Projects
+            </a>    
+            
             <button class="logout-btn" on:click={handleLogout}>
                 <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
                 Logout
@@ -213,6 +215,15 @@
         font-size: 1.25rem;
         font-weight: 600;
         letter-spacing: 0.5px;
+    }
+
+    .header-link {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .header-link:hover h2 {
+        color: var(--primary);
     }
 
     .close-btn {

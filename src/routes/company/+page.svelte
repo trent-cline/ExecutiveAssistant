@@ -7,7 +7,6 @@
     import Chart from 'chart.js/auto';
     import GridContainer from '$lib/components/containers/GridContainer.svelte';
     import Card from '$lib/components/containers/Card.svelte';
-    import StatCard from '$lib/components/stats/StatCard.svelte';
     import AddFundingModal from '$lib/components/funding/AddFundingModal.svelte';
     import EditFundingModal from '$lib/components/funding/EditFundingModal.svelte';
     import FundingStatsContainer from '$lib/components/funding/FundingStatsContainer.svelte';

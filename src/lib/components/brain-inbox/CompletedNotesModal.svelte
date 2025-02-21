@@ -90,17 +90,18 @@
 
 {#if show}
     <div 
-        class="modal-backdrop" 
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
         on:click={handleOverlayClick}
-        on:keydown={handleKeydown}
+        on:keydown={e => e.key === 'Escape' && onClose()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="completed-notes-title"
         transition:fade
     >
         <div 
-            class="modal-content"
+            class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 relative"
             on:click|stopPropagation
+            on:keydown|stopPropagation
             role="document"
             transition:fly="{{ y: 20, duration: 300 }}"
         >
@@ -127,28 +128,68 @@
 {/if}
 
 <style>
-    .modal-backdrop {
+    .fixed {
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
     }
 
-    .modal-content {
-        background: white;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 1200px;
-        max-height: 90vh;
-        overflow: hidden;
+    .inset-0 {
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+    }
+
+    .bg-black {
+        background-color: #000;
+    }
+
+    .bg-opacity-50 {
+        background-opacity: 0.5;
+    }
+
+    .flex {
         display: flex;
-        flex-direction: column;
+    }
+
+    .items-center {
+        align-items: center;
+    }
+
+    .justify-center {
+        justify-content: center;
+    }
+
+    .z-50 {
+        z-index: 50;
+    }
+
+    .bg-white {
+        background-color: #fff;
+    }
+
+    .rounded-lg {
+        border-radius: 0.5rem;
+    }
+
+    .p-6 {
+        padding: 1.5rem;
+    }
+
+    .max-w-2xl {
+        max-width: 42rem;
+    }
+
+    .w-full {
+        width: 100%;
+    }
+
+    .mx-4 {
+        margin-left: 1rem;
+        margin-right: 1rem;
+    }
+
+    .relative {
+        position: relative;
     }
 
     .modal-header {

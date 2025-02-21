@@ -75,8 +75,7 @@
                 id="summary"
                 bind:value={note.summary}
                 rows="4"
-                required
-                placeholder="Enter note summary"
+                placeholder="Enter note summary (optional)"
             ></textarea>
         </div>
 

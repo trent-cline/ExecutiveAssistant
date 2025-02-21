@@ -54,13 +54,29 @@
         show = false;
         dispatch('close');
     }
+
+    function handleBackdropClick(event) {
+        if (event.target === event.currentTarget) {
+            close();
+        }
+    }
 </script>
 
 {#if show}
-<div class="modal-backdrop" on:click={close}>
-    <div class="modal" on:click|stopPropagation>
+<div 
+    class="modal-backdrop" 
+    on:click={handleBackdropClick}
+    on:keydown={e => e.key === 'Escape' && close()}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="edit-note-title">
+    <div 
+        class="modal" 
+        on:click|stopPropagation
+        on:keydown|stopPropagation
+        role="document">
         <div class="modal-header">
-            <h2>Edit Note</h2>
+            <h2 id="edit-note-title">Edit Note</h2>
             <button class="close-button" on:click={close}>&times;</button>
         </div>
         
@@ -82,8 +98,7 @@
                     id="summary" 
                     bind:value={editedNote.summary}
                     rows="3"
-                    placeholder="Enter note details"
-                />
+                    placeholder="Enter note details"></textarea>
             </div>
 
             <div class="form-grid">

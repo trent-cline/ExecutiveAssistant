@@ -2,16 +2,17 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import { fade, slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
-    import type { DatabaseTableProps, FilterState, SortState } from './types';
+    import type { DatabaseTableConfig, FilterState, SortState } from './types';
     import TableHeader from './TableHeader.svelte';
     import TableRow from './TableRow.svelte';
     import EditModal from './EditModal.svelte';
     import TableMilestones from './TableMilestones.svelte';
     import TableFilters from './TableFilters.svelte';
     import { user } from '$lib/auth';
+    import { SupabaseClient } from '@supabase/supabase-js';
 
-    export let config: DatabaseTableProps;
-    export let supabase: any;
+    export let config: DatabaseTableConfig;
+    export let supabase: SupabaseClient;
     export let initialData: any[] = [];
     export let onDataChange: (data: any[]) => void = () => {};
 
@@ -49,67 +50,70 @@
 
     onMount(async () => {
         if (initialData.length === 0) {
-            await fetchData();
-        } else {
-            loading = false;
-            applyFiltersAndSort();
+            loading = true;
+            try {
+                let query = supabase
+                    .from(config.tableName)
+                    .select('*');
+
+                if (config.defaultSort) {
+                    query = query.order(config.defaultSort.column, {
+                        ascending: config.defaultSort.direction === 'asc'
+                    });
+                }
+
+                const { data: fetchedData, error: err } = await query;
+
+                if (err) {
+                    error = err.message;
+                    return;
+                }
+
+                data = fetchedData || [];
+                applyFiltersAndSort();
+            } catch (err) {
+                error = err instanceof Error ? err.message : 'An error occurred';
+            } finally {
+                loading = false;
+            }
         }
     });
 
-    async function fetchData() {
-        try {
-            loading = true;
-            error = null;
-            let query = supabase.from(config.tableName).select('*');
-            
-            // Apply default sort if specified
-            if (config.defaultSort) {
-                query = query.order(config.defaultSort.column, { ascending: config.defaultSort.direction === 'asc' });
-            }
-            
-            const { data: fetchedData, error: fetchError } = await query;
-            
-            if (fetchError) throw fetchError;
-            
-            data = fetchedData;
-            applyFiltersAndSort();
-            onDataChange(data);
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            error = err.message;
-        } finally {
-            loading = false;
-        }
+    function handleDragStart(event: DragEvent, row: any) {
+        if (!(event.target instanceof HTMLElement)) return;
+        event.target.classList.add('dragging');
+        draggedRow = row;
     }
 
-    function handleDragStart(event: DragEvent, row: any) {
-        draggedRow = row;
-        if (event.dataTransfer) {
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', row.id);
-        }
-        event.currentTarget?.classList.add('dragging');
+    function handleDragEnd(event: DragEvent) {
+        if (!(event.target instanceof HTMLElement)) return;
+        event.target.classList.remove('dragging');
+        draggedRow = null;
+        dragOverRow = null;
     }
 
     function handleDragOver(event: DragEvent, row: any) {
+        if (!(event.target instanceof HTMLElement)) return;
         event.preventDefault();
-        if (draggedRow && draggedRow.id !== row.id) {
-            dragOverRow = row;
-            const draggedRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-            const draggedMiddle = draggedRect.top + draggedRect.height / 2;
-            if (event.clientY < draggedMiddle) {
-                event.currentTarget?.classList.add('drag-above');
-                event.currentTarget?.classList.remove('drag-below');
-            } else {
-                event.currentTarget?.classList.add('drag-below');
-                event.currentTarget?.classList.remove('drag-above');
-            }
+        if (!draggedRow || draggedRow.id === row.id) return;
+
+        const rect = event.target.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+
+        if (event.clientY < midY) {
+            event.target.classList.add('drag-above');
+            event.target.classList.remove('drag-below');
+        } else {
+            event.target.classList.add('drag-below');
+            event.target.classList.remove('drag-above');
         }
+
+        dragOverRow = row;
     }
 
     function handleDragLeave(event: DragEvent) {
-        event.preventDefault();
-        event.currentTarget?.classList.remove('drag-above', 'drag-below');
+        if (!(event.target instanceof HTMLElement)) return;
+        event.target.classList.remove('drag-above', 'drag-below');
     }
 
     async function handleDrop(event: DragEvent, targetRow: any) {
@@ -166,16 +170,6 @@
 
         // Clean up
         event.currentTarget?.classList.remove('drag-above', 'drag-below', 'dragging');
-        draggedRow = null;
-        dragOverRow = null;
-    }
-
-    function handleDragEnd(event: DragEvent) {
-        event.preventDefault();
-        const rows = document.querySelectorAll('tr');
-        rows.forEach(row => {
-            row.classList.remove('drag-above', 'drag-below', 'dragging');
-        });
         draggedRow = null;
         dragOverRow = null;
     }
@@ -239,36 +233,56 @@
 
         // Apply search filter
         if (searchTerm) {
+            const searchLower = searchTerm.toLowerCase();
             result = result.filter(row => 
-                Object.values(row).some(value => 
-                    String(value).toLowerCase().includes(searchTerm.toLowerCase())
-                )
+                Object.entries(row).some(([key, value]) => {
+                    if (typeof value === 'string') {
+                        return value.toLowerCase().includes(searchLower);
+                    }
+                    return false;
+                })
             );
         }
 
         // Apply column filters
         Object.entries(filterState).forEach(([column, filter]) => {
-            if (filter?.value) {
-                result = result.filter(row => 
-                    String(row[column]).toLowerCase().includes(filter.value.toLowerCase())
-                );
+            if (!filter) return;
+            
+            if (typeof filter === 'object' && 'operator' in filter && 'value' in filter) {
+                const { operator, value } = filter;
+                result = result.filter(row => {
+                    const cellValue = row[column];
+                    switch (operator) {
+                        case 'eq': return cellValue === value;
+                        case 'neq': return cellValue !== value;
+                        case 'gt': return cellValue > value;
+                        case 'gte': return cellValue >= value;
+                        case 'lt': return cellValue < value;
+                        case 'lte': return cellValue <= value;
+                        case 'like': return String(cellValue).includes(String(value));
+                        case 'ilike': return String(cellValue).toLowerCase().includes(String(value).toLowerCase());
+                        case 'in': return Array.isArray(value) && value.includes(cellValue);
+                        default: return true;
+                    }
+                });
             }
         });
 
-        // Apply sort
+        // Apply sorting
         if (sortState) {
             const { column, direction } = sortState;
             result.sort((a, b) => {
                 const aVal = a[column];
                 const bVal = b[column];
-                return direction === 'asc' 
-                    ? String(aVal).localeCompare(String(bVal))
-                    : String(bVal).localeCompare(String(aVal));
+                const modifier = direction === 'asc' ? 1 : -1;
+                
+                if (aVal < bVal) return -1 * modifier;
+                if (aVal > bVal) return 1 * modifier;
+                return 0;
             });
         }
 
         filteredData = result;
-        currentPage = 1;
     }
 
     function getPaginatedData(data: any[]) {
@@ -284,65 +298,48 @@
     }
 
     async function handleEdit(row: any) {
+        if (!(event?.target instanceof HTMLElement)) return;
+        event.target.classList.add('editing');
         editingRow = { ...row };
         showEditModal = true;
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm('Are you sure you want to delete this record?')) return;
+    async function handleDelete(row: any) {
+        if (!confirm('Are you sure you want to delete this item?')) return;
 
         try {
-            const { error: deleteError } = await supabase
+            const { error: err } = await supabase
                 .from(config.tableName)
                 .delete()
-                .eq('id', id);
+                .eq('id', row.id);
 
-            if (deleteError) throw deleteError;
-            
-            // Update local data
-            data = data.filter(row => row.id !== id);
+            if (err) throw err;
+
+            data = data.filter(item => item.id !== row.id);
             applyFiltersAndSort();
-            onDataChange(data);
-            dispatch('delete', { id });
         } catch (err) {
-            console.error('Error deleting record:', err);
-            error = err.message;
+            error = err instanceof Error ? err.message : 'An error occurred';
         }
     }
 
-    async function handleSave(event: CustomEvent) {
-        const record = event.detail;
+    async function handleSave(updatedRow: any) {
         try {
-            if (editingRow?.id) {
-                // Update existing record
-                const { error: err } = await supabase
-                    .from(config.tableName)
-                    .update({
-                        ...record,
-                        // Only add updated_at if the column exists in the config
-                        ...(config.columns.some(col => col.id === 'updated_at') ? { updated_at: new Date().toISOString() } : {})
-                    })
-                    .eq('id', editingRow.id);
+            const { data: savedData, error: err } = await supabase
+                .from(config.tableName)
+                .update(updatedRow)
+                .eq('id', updatedRow.id)
+                .select()
+                .single();
 
-                if (err) throw err;
-            } else {
-                // Insert new record
-                const { error: err } = await supabase
-                    .from(config.tableName)
-                    .insert({
-                        ...record,
-                        // Only add created_at if the column exists in the config
-                        ...(config.columns.some(col => col.id === 'created_at') ? { created_at: new Date().toISOString() } : {})
-                    });
+            if (err) throw err;
 
-                if (err) throw err;
-            }
-
+            data = data.map(item => 
+                item.id === savedData.id ? savedData : item
+            );
+            applyFiltersAndSort();
             showEditModal = false;
-            await fetchData();
         } catch (err) {
-            console.error('Error saving record:', err);
-            error = err.message;
+            error = err instanceof Error ? err.message : 'An error occurred';
         }
     }
 
@@ -376,9 +373,10 @@
             ...filteredData.map(row => 
                 config.columns.map(col => {
                     const value = row[col.id];
-                    return typeof value === 'string' && value.includes(',')
-                        ? `"${value}"`
-                        : value;
+                    if (typeof value === 'string' && value.includes(',')) {
+                        return `"${value}"`;
+                    }
+                    return value;
                 }).join(',')
             )
         ].join('\n');
@@ -597,7 +595,7 @@
                                         {#if config.features?.delete && config.permissions?.canDelete(row)}
                                             <button 
                                                 class="action-button delete-button"
-                                                on:click={() => handleDelete(row.id)}
+                                                on:click={() => handleDelete(row)}
                                                 aria-label="Delete row"
                                             >
                                                 <i class="fas fa-trash-can" aria-hidden="true"></i>

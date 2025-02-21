@@ -1,15 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from '$env/dynamic/public';
+import { createClient } from '@supabase/supabase-js'
+import { env } from '$env/dynamic/public'
 
 // Initialize Supabase client with proper typing
-const supabaseUrl = env.PUBLIC_SUPABASE_URL;
-const supabaseKey = env.PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = env.PUBLIC_SUPABASE_URL
+const supabaseKey = env.PUBLIC_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables');
+    throw new Error('Missing Supabase environment variables')
 }
 
-console.log('Initializing Supabase client with URL:', supabaseUrl);
+console.log('Initializing Supabase client with URL:', supabaseUrl)
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
@@ -17,7 +17,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
         autoRefreshToken: true,
         detectSessionInUrl: true
     }
-});
+})
 
 export interface BrainDump {
     id?: string;

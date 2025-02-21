@@ -1,6 +1,5 @@
 <script lang="ts">
     import Card from '$lib/components/containers/Card.svelte';
-    import StatCard from '$lib/components/stats/StatCard.svelte';
 
     export let totalFunding: number;
     export let remainingFunding: number;
