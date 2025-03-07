@@ -36,7 +36,8 @@
                     class="action-button"
                     title="Mark as done"
                     aria-label="Mark task as done"
-                    onclick="document.dispatchEvent(new CustomEvent('toggle-status', { detail: '${row.id}' }))"
+                    data-action="toggle-status"
+                    data-id="${row.id}"
                 >
                     <i class="fas fa-check"></i>
                 </button>
@@ -74,7 +75,8 @@
                         class="action-button edit"
                         title="Edit"
                         aria-label="Edit note"
-                        onclick="document.dispatchEvent(new CustomEvent('edit-note', { detail: '${row.id}' }))"
+                        data-action="edit-note"
+                        data-id="${row.id}"
                     >
                         <i class="fas fa-edit" aria-hidden="true"></i>
                     </button>
@@ -82,7 +84,8 @@
                         class="action-button delete"
                         title="Delete"
                         aria-label="Delete note"
-                        onclick="document.dispatchEvent(new CustomEvent('delete-note', { detail: '${row.id}' }))"
+                        data-action="delete-note"
+                        data-id="${row.id}"
                     >
                         <i class="fas fa-trash" aria-hidden="true"></i>
                     </button>
@@ -90,7 +93,8 @@
                         class="action-button shopping"
                         title="Send to Shopping List"
                         aria-label="Send to Shopping List"
-                        onclick="document.dispatchEvent(new CustomEvent('send-to-shopping', { detail: '${row.id}' }))"
+                        data-action="send-to-shopping"
+                        data-id="${row.id}"
                     >
                         <i class="fas fa-shopping-cart" aria-hidden="true"></i>
                     </button>
@@ -98,7 +102,8 @@
                         class="action-button dlltw"
                         title="Send to DLLTW Notes"
                         aria-label="Send to DLLTW Notes"
-                        onclick="document.dispatchEvent(new CustomEvent('send-to-dlltw', { detail: '${row.id}' }))"
+                        data-action="send-to-dlltw"
+                        data-id="${row.id}"
                     >
                         <i class="fas fa-book" aria-hidden="true"></i>
                     </button>
@@ -106,7 +111,8 @@
                         class="action-button lists"
                         title="Send to Lists"
                         aria-label="Send to Lists"
-                        onclick="document.dispatchEvent(new CustomEvent('send-to-lists', { detail: '${row.id}' }))"
+                        data-action="send-to-lists"
+                        data-id="${row.id}"
                     >
                         <i class="fas fa-list" aria-hidden="true"></i>
                     </button>
@@ -140,7 +146,7 @@
     ];
 
     const tableConfig: DatabaseTableConfig = {
-        tableName: 'brain_dump_database',
+        tableName: 'brain_dump',
         columns,
         defaultSort: { column: 'created_at', direction: 'desc' },
         pageSize: 10,
@@ -166,21 +172,38 @@
 
     onMount(() => {
         loadNotes();
-        document.addEventListener('toggle-status', handleToggleStatus);
-        document.addEventListener('edit-note', handleEdit);
-        document.addEventListener('send-to-dlltw', handleSendToDLLTW);
-        document.addEventListener('send-to-shopping', handleSendToShopping);
-        document.addEventListener('send-to-lists', handleSendToLists);
-        document.addEventListener('delete-note', handleDelete);
+        
+        // Add click event listener to handle all button clicks
+        document.querySelector('.brain-inbox-table')?.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement;
+            const button = target.closest('button');
+            if (!button) return;
 
-        return () => {
-            document.removeEventListener('toggle-status', handleToggleStatus);
-            document.removeEventListener('edit-note', handleEdit);
-            document.removeEventListener('send-to-dlltw', handleSendToDLLTW);
-            document.removeEventListener('send-to-shopping', handleSendToShopping);
-            document.removeEventListener('send-to-lists', handleSendToLists);
-            document.removeEventListener('delete-note', handleDelete);
-        };
+            const action = button.dataset.action;
+            const id = button.dataset.id;
+            if (!action || !id) return;
+
+            switch (action) {
+                case 'toggle-status':
+                    handleToggleStatus(id);
+                    break;
+                case 'edit-note':
+                    handleEdit(id);
+                    break;
+                case 'delete-note':
+                    handleDelete(id);
+                    break;
+                case 'send-to-dlltw':
+                    handleSendToDLLTW(id);
+                    break;
+                case 'send-to-shopping':
+                    handleSendToShopping(id);
+                    break;
+                case 'send-to-lists':
+                    handleSendToLists(id);
+                    break;
+            }
+        });
     });
 
     async function loadNotes() {
@@ -188,7 +211,7 @@
         error = '';
         try {
             const { data: notesData, error: fetchError } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .select('*')
                 .not('status', 'eq', 'Done')
                 .order('created_at', { ascending: false });
@@ -203,11 +226,13 @@
         }
     }
 
-    async function handleToggleStatus(event: CustomEvent) {
-        const noteId = event.detail;
+    async function handleToggleStatus(noteId: string) {
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return;
+
         try {
             const { error: updateError } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .update({ 
                     status: 'Done',
                     completed_at: new Date().toISOString(),
@@ -225,23 +250,17 @@
         }
     }
 
-    function handleDataChange(event: CustomEvent) {
-        const newData = event.detail;
-        notes = newData.filter(note => note.status !== 'Done');
-    }
-
-    function handleEdit(event: CustomEvent) {
-        const noteId = event.detail;
-        editingNote = notes.find(n => n.id === noteId) || null;
-        if (editingNote) {
-            showEditModal = true;
-        }
+    async function handleEdit(noteId: string) {
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return;
+        editingNote = note;
+        showEditModal = true;
     }
 
     async function handleEditSave(updatedNote: Note) {
         try {
             const { error: updateError } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .update({ 
                     name: updatedNote.name,
                     summary: updatedNote.summary,
@@ -264,8 +283,7 @@
         }
     }
 
-    async function handleSendToDLLTW(event: CustomEvent) {
-        const noteId = event.detail;
+    async function handleSendToDLLTW(noteId: string) {
         const note = notes.find(n => n.id === noteId);
         if (!note) return;
 
@@ -288,7 +306,7 @@
 
             // Update the original note status to Done
             const { error: updateError } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .update({
                     status: 'Done',
                     completed_at: new Date().toISOString()
@@ -303,8 +321,7 @@
         }
     }
 
-    async function handleSendToShopping(event: CustomEvent) {
-        const noteId = event.detail;
+    async function handleSendToShopping(noteId: string) {
         const note = notes.find(n => n.id === noteId);
         if (!note) return;
 
@@ -324,7 +341,7 @@
 
             // Update the original note status to Done
             const { error: updateError } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .update({
                     status: 'Done',
                     completed_at: new Date().toISOString()
@@ -339,8 +356,7 @@
         }
     }
 
-    async function handleSendToLists(event: CustomEvent) {
-        const noteId = event.detail;
+    async function handleSendToLists(noteId: string) {
         const note = notes.find(n => n.id === noteId);
         if (!note) return;
 
@@ -364,9 +380,8 @@
         }
     }
 
-    async function handleDelete(event: CustomEvent) {
-        const noteId = event.detail;
-        if (!confirm('Are you sure you want to delete this note? This will also remove related items from the shopping list and DLLTW notes.')) return;
+    async function handleDelete(noteId: string) {
+        if (!confirm('Are you sure you want to delete this note?')) return;
 
         try {
             // First delete any related shopping list items
@@ -387,7 +402,7 @@
 
             // Then delete the note itself
             const { error } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .delete()
                 .eq('id', noteId);
 
@@ -412,7 +427,6 @@
             config={tableConfig}
             {supabase}
             initialData={notes}
-            on:dataChange={handleDataChange}
         />
     </div>
 

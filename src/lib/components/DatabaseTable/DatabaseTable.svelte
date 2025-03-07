@@ -32,6 +32,7 @@
     let columnWidths: { [key: string]: number } = {};
     let draggedRow: any = null;
     let dragOverRow: any = null;
+    let paginatedData: any[] = [];
 
     $: {
         data = [...initialData];
@@ -46,7 +47,19 @@
 
     $: pageSize = config.pageSize || 10;
     $: totalPages = Math.ceil(filteredData.length / pageSize);
-    $: paginatedData = getPaginatedData(filteredData);
+    
+    // Make pagination reactive
+    $: {
+        // Ensure currentPage is within bounds
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        if (currentPage < 1) {
+            currentPage = 1;
+        }
+        // Update paginatedData whenever currentPage, pageSize, or filteredData changes
+        paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    }
 
     onMount(async () => {
         if (initialData.length === 0) {
@@ -283,10 +296,8 @@
         }
 
         filteredData = result;
-    }
-
-    function getPaginatedData(data: any[]) {
-        return data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+        // Reset to first page when filters change
+        currentPage = 1;
     }
 
     async function handleAdd() {

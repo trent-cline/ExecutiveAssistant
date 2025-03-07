@@ -11,8 +11,9 @@
     async function loadPrivateNotes() {
         try {
             const { data, error: err } = await supabase
-                .from('private_notes')
+                .from('brain_dump')
                 .select('*')
+                .eq('source', 'private_notes')
                 .order('created_at', { ascending: false });
 
             if (err) throw err;
@@ -28,8 +29,8 @@
     async function untagNote(noteId) {
         try {
             const { error: err } = await supabase
-                .from('private_notes')
-                .delete()
+                .from('brain_dump')
+                .update({ source: 'untagged' })
                 .eq('id', noteId);
 
             if (err) throw err;
@@ -47,12 +48,13 @@
         loadPrivateNotes();
 
         const subscription = supabase
-            .channel('private_notes_changes')
+            .channel('brain_dump_changes')
             .on('postgres_changes', 
                 { 
                     event: '*', 
                     schema: 'public', 
-                    table: 'private_notes' 
+                    table: 'brain_dump',
+                    filter: 'source=eq.private_notes'
                 }, 
                 payload => {
                     loadPrivateNotes();

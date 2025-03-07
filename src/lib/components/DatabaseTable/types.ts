@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { SvelteComponent } from 'svelte';
+import type { ComponentType, SvelteComponent } from 'svelte';
 
 export interface Column {
     id: string;
@@ -8,13 +8,13 @@ export interface Column {
     sortable?: boolean;
     filterable?: boolean;
     filterOptions?: string[];
-    template?: (value: any, row?: any) => string;
+    template?: (value: unknown, row?: Record<string, unknown>) => string;
     editable?: boolean;
     type?: 'text' | 'number' | 'date' | 'select' | 'boolean' | 'url' | 'currency' | 'percentage' | 'milestones';
     required?: boolean;
-    validation?: (value: any) => boolean | string;
-    component?: typeof SvelteComponent;
-    componentProps?: Record<string, any>;
+    validation?: (value: unknown) => boolean | string;
+    component?: ComponentType;
+    componentProps?: Record<string, unknown>;
 }
 
 export interface DatabaseTableConfig {
@@ -35,25 +35,26 @@ export interface DatabaseTableConfig {
         select?: boolean;
     };
     permissions?: {
-        canView?: (row: any) => boolean;
-        canEdit?: (row: any) => boolean;
-        canDelete?: (row: any) => boolean;
+        canView?: (row: Record<string, unknown>) => boolean;
+        canEdit?: (row: Record<string, unknown>) => boolean;
+        canDelete?: (row: Record<string, unknown>) => boolean;
         canAdd?: boolean;
     };
     customActions?: {
         name: string;
         label: string;
         icon?: string;
-        handler: (row: any) => void | Promise<void>;
-        condition?: (row: any) => boolean;
+        handler: (row: Record<string, unknown>) => void | Promise<void>;
+        condition?: (row: Record<string, unknown>) => boolean;
     }[];
 }
 
+export type FilterOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'ilike' | 'in';
+
 export interface FilterState {
-    [column: string]: {
-        operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'ilike' | 'in';
-        value: any;
-    };
+    column: string;
+    operator: FilterOperator;
+    value: string | number | boolean | null;
 }
 
 export interface SortState {
@@ -62,8 +63,8 @@ export interface SortState {
 }
 
 export interface CellContent {
-    component?: typeof SvelteComponent;
-    props?: Record<string, any>;
+    component?: ComponentType;
+    props?: Record<string, unknown>;
     html?: string;
     text?: string;
 }
@@ -71,8 +72,8 @@ export interface CellContent {
 export interface DatabaseTableProps {
     config: DatabaseTableConfig;
     supabase: SupabaseClient;
-    initialData?: any[];
-    onRowClick?: (row: any) => void;
-    onDataChange?: (data: any[]) => void;
+    initialData?: Record<string, unknown>[];
+    onRowClick?: (row: Record<string, unknown>) => void;
+    onDataChange?: (data: Record<string, unknown>[]) => void;
     className?: string;
 }

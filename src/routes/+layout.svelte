@@ -10,6 +10,8 @@
     import FloatingVoiceRecorder from '$lib/components/FloatingVoiceRecorder.svelte';
     import { onMount, onDestroy } from 'svelte';
 
+    export let data;
+
     let isMenuOpen = false;
     let isMobile = false;
     let initialAuthCheckComplete = false;
@@ -24,12 +26,13 @@
         '/private-notes',
         '/company',
         '/company/structure',
-        '/company/cloud-costs'
+        '/company/cloud-costs',
+        '/prm'
     ];
 
     onMount(async () => {
-        // Wait for initial session check
-        const { data: { session } } = await supabase.auth.getSession();
+        // Set initial user state from server data
+        user.set(data.user);
         initialAuthCheckComplete = true;
 
         const unsubscribe = user.subscribe(($user) => {

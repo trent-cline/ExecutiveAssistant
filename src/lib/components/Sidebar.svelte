@@ -111,6 +111,15 @@
                 <i class="fas fa-tasks" aria-hidden="true"></i>
                 Active Projects
             </a>    
+
+            <a 
+                href="/prm" 
+                class:active={$page.url.pathname.startsWith('/prm')} 
+                on:click={() => isMobile && (isOpen = false)}
+            >
+                <i class="fas fa-address-book" aria-hidden="true"></i>
+                Relationships
+            </a>
             
             <button class="logout-btn" on:click={handleLogout}>
                 <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
