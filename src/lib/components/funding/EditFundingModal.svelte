@@ -25,8 +25,7 @@
             type,
             amount: parseFloat(amount),
             equity: parseFloat(equity),
-            notes,
-            date: new Date()
+            notes
         });
         closeModal();
     }
@@ -41,10 +40,28 @@
     function closeModal() {
         dispatch('close');
     }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    }
 </script>
 
-<div class="modal-backdrop" on:click|self={closeModal} role="dialog" aria-modal="true" aria-labelledby="modal-title" transition:fade>
-    <div class="modal-content">
+<div class="modal-container">
+    <button 
+        class="modal-backdrop"
+        on:click={closeModal}
+        on:keydown={handleKeydown}
+        aria-label="Close modal"
+    ></button>
+    <div 
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        transition:fade
+    >
         <div class="modal-header">
             <h2 id="modal-title">Edit Funding Source</h2>
             <button class="close-button" on:click={closeModal} aria-label="Close modal">
@@ -53,7 +70,7 @@
         </div>
         <form on:submit|preventDefault={handleSubmit} class="space-y-4">
             {#if error}
-                <div class="error-message">
+                <div class="error-message" role="alert">
                     {error}
                 </div>
             {/if}
@@ -132,22 +149,34 @@
 </div>
 
 <style>
-    .modal-backdrop {
+    .modal-container {
         position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 50;
+    }
+
+    .modal-backdrop {
+        position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         background-color: rgba(17, 24, 39, 0.75);
         backdrop-filter: blur(4px);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 50;
-        padding: 1rem;
+        border: none;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
     }
 
     .modal-content {
+        position: relative;
         width: 100%;
         max-width: 32rem;
         background: var(--surface-1, white);
@@ -155,6 +184,8 @@
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         transform-origin: center;
         animation: modal-pop 0.2s ease-out;
+        padding: 1rem;
+        z-index: 1;
     }
 
     .modal-header {
@@ -200,147 +231,85 @@
         font-size: 0.875rem;
     }
 
-    .space-y-4 > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 1rem;
-    }
-
-    .space-y-2 > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 0.5rem;
-    }
-
     label {
         display: block;
         font-size: 0.875rem;
         font-weight: 500;
-        color: var(--text-2);
-        margin-bottom: 0.25rem;
+        color: var(--text-1);
+        margin-bottom: 0.5rem;
     }
 
     input, select, textarea {
         width: 100%;
-        padding: 0.625rem 0.875rem;
+        padding: 0.625rem;
         border: 1px solid var(--border-2, #e5e7eb);
         border-radius: 0.5rem;
         background-color: var(--surface-1);
         color: var(--text-1);
         font-size: 0.875rem;
-        transition: all 0.2s;
     }
 
     input:focus, select:focus, textarea:focus {
         outline: none;
-        border-color: #4F46E5;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-    }
-
-    .flex {
-        display: flex;
-    }
-
-    .justify-between {
-        justify-content: space-between;
-    }
-
-    .justify-end {
-        justify-content: flex-end;
-    }
-
-    .space-x-3 > :not([hidden]) ~ :not([hidden]) {
-        margin-left: 0.75rem;
-    }
-
-    .mr-2 {
-        margin-right: 0.5rem;
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
     }
 
     button {
         padding: 0.625rem 1rem;
+        border-radius: 0.5rem;
         font-size: 0.875rem;
         font-weight: 500;
-        border-radius: 0.5rem;
         transition: all 0.2s;
     }
 
     button[type="submit"] {
-        background-color: #4F46E5;
+        background-color: #3B82F6;
         color: white;
-        border: 1px solid transparent;
     }
 
     button[type="submit"]:hover {
-        background-color: #4338CA;
+        background-color: #2563EB;
     }
 
     button[type="button"] {
-        background-color: white;
-        color: var(--text-2);
-        border: 1px solid var(--border-2, #e5e7eb);
-    }
-
-    button[type="button"]:hover {
         background-color: var(--surface-2);
         color: var(--text-1);
     }
 
+    button[type="button"]:hover {
+        background-color: var(--surface-3);
+    }
+
     .delete-button {
-        background-color: #FEE2E2;
-        color: #991B1B;
-        border: 1px solid #FCA5A5;
+        background-color: #EF4444;
+        color: white;
     }
 
     .delete-button:hover {
-        background-color: #FEE2E2;
-        color: #7F1D1D;
+        background-color: #DC2626;
     }
 
     @keyframes modal-pop {
-        0% {
+        from {
             opacity: 0;
             transform: scale(0.95);
         }
-        100% {
+        to {
             opacity: 1;
             transform: scale(1);
         }
     }
 
     @media (prefers-color-scheme: dark) {
-        .modal-content {
-            background-color: var(--surface-2, #1f2937);
-        }
-
-        .error-message {
-            background-color: #7F1D1D;
-            color: #FEE2E2;
-        }
-
         input, select, textarea {
             background-color: var(--surface-2);
-            border-color: #374151;
+            border-color: var(--border-color);
         }
 
         input:focus, select:focus, textarea:focus {
-            border-color: #6366F1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        button[type="button"] {
-            background-color: #374151;
-            border-color: #4B5563;
-        }
-
-        button[type="button"]:hover {
-            background-color: #4B5563;
-        }
-
-        .delete-button {
-            background-color: #7F1D1D;
-            color: #FEE2E2;
-            border-color: #991B1B;
-        }
-
-        .delete-button:hover {
-            background-color: #991B1B;
+            border-color: #60A5FA;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.1);
         }
     }
 </style>
