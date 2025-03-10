@@ -11,6 +11,7 @@
     
     // Initialize form data with defaults
     let formData = {
+        id: row.id, // Explicitly preserve the ID
         ...row,
         user_id: row.user_id || ($user ? $user.id : null)
     };
@@ -41,11 +42,12 @@
 
     function handleSubmit() {
         if (validate()) {
-            // Clean up any undefined or null values
-            const cleanData = Object.fromEntries(
-                Object.entries(formData).filter(([_, v]) => v != null)
+            // Clean up any undefined or null values, but preserve id
+            const { id, ...rest } = formData;
+            const cleanRest = Object.fromEntries(
+                Object.entries(rest).filter(([_, v]) => v != null)
             );
-            dispatch('save', cleanData);
+            dispatch('save', { id, ...cleanRest });
         }
     }
 

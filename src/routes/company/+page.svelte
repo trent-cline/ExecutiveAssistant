@@ -28,7 +28,7 @@
     let showAddForm = false;
     let showEditForm = false;
     let selectedSource = null;
-    let error = '';
+    let error: string | null = null;
 
     onMount(async () => {
         const { data: session } = await supabase.auth.getSession();
@@ -235,7 +235,7 @@
             await loadFundingSources();
             showEditForm = false;
             selectedSource = null;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error updating funding source:', err);
             error = err.message;
         }
@@ -254,7 +254,7 @@
             await loadFundingSources();
             showEditForm = false;
             selectedSource = null;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error deleting funding source:', err);
             error = err.message;
         }
@@ -399,6 +399,15 @@
                         <h3>Company Tools</h3>
                     </div>
                     <div class="tools-list">
+                        <a href="/company/funding" class="tool-item">
+                            <div class="tool-icon">
+                                <i class="fas fa-money-bill"></i>
+                            </div>
+                            <div class="tool-content">
+                                <h4>Fundraising</h4>
+                            </div>
+                            <i class="fas fa-chevron-right tool-arrow"></i>
+                        </a>
                         <a href="/company/cloud-costs" class="tool-item">
                             <div class="tool-icon">
                                 <i class="fas fa-cloud"></i>
