@@ -4,6 +4,9 @@
     import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
     import type { Column, DatabaseTableConfig } from '$lib/components/DatabaseTable/types';
     import EditNoteModal from './EditNoteModal.svelte';
+    import NoteToListRouter from './NoteToListRouter.svelte';
+    
+    export let hideCompleted = false;
 
     interface Note {
         id: string;
@@ -25,6 +28,8 @@
     let error = '';
     let showEditModal = false;
     let editingNote: Note | null = null;
+    let showListRouterModal = false;
+    let selectedNoteForList: Note | null = null;
 
     const columns: Column[] = [
         {
@@ -196,11 +201,11 @@
                 case 'send-to-dlltw':
                     handleSendToDLLTW(id);
                     break;
-                case 'send-to-shopping':
-                    handleSendToShopping(id);
-                    break;
                 case 'send-to-lists':
                     handleSendToLists(id);
+                    break;
+                case 'send-to-shopping':
+                    handleSendToShopping(id);
                     break;
             }
         });
@@ -210,10 +215,16 @@
         loading = true;
         error = '';
         try {
-            const { data: notesData, error: fetchError } = await supabase
+            let query = supabase
                 .from('brain_dump')
-                .select('*')
-                .not('status', 'eq', 'Done')
+                .select('*');
+                
+            // Only filter out completed notes if hideCompleted is true
+            if (hideCompleted) {
+                query = query.not('status', 'eq', 'Done');
+            }
+            
+            const { data: notesData, error: fetchError } = await query
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
@@ -283,6 +294,25 @@
         }
     }
 
+    async function handleSendToLists(noteId: string) {
+        const note = notes.find(n => n.id === noteId);
+        if (!note) return;
+        
+        selectedNoteForList = note;
+        showListRouterModal = true;
+    }
+    
+    function handleListRouterClose() {
+        showListRouterModal = false;
+        selectedNoteForList = null;
+    }
+    
+    function handleListRouterSuccess(event: CustomEvent<{listType: string; itemId: string}>) {
+        const { listType, itemId } = event.detail;
+        console.log(`Note added to ${listType} list with ID: ${itemId}`);
+        // You could show a success notification here if desired
+    }
+    
     async function handleSendToDLLTW(noteId: string) {
         const note = notes.find(n => n.id === noteId);
         if (!note) return;
@@ -356,29 +386,7 @@
         }
     }
 
-    async function handleSendToLists(noteId: string) {
-        const note = notes.find(n => n.id === noteId);
-        if (!note) return;
-
-        try {
-            const { data, error } = await supabase
-                .from('lists')
-                .insert([{
-                    name: note.name,
-                    description: note.summary,
-                    category: 'other',
-                    status: 'active',
-                    priority: note.priority?.toLowerCase() || 'medium'
-                }]);
-
-            if (error) throw error;
-
-            // Show success message or handle UI update
-        } catch (err) {
-            console.error('Error sending to lists:', err);
-            error = err.message;
-        }
-    }
+    // Second implementation of handleSendToLists removed to fix duplicate function declaration
 
     async function handleDelete(noteId: string) {
         if (!confirm('Are you sure you want to delete this note?')) return;
@@ -418,27 +426,40 @@
 <div class="brain-inbox-table">
     {#if error}
         <div class="error-message">
-            {error}
+            <p>{error}</p>
         </div>
     {/if}
 
-    <div class="database-container">
-        <DatabaseTable
-            config={tableConfig}
-            {supabase}
-            initialData={notes}
-        />
-    </div>
+    {#if loading}
+        <div class="loading-spinner"></div>
+    {:else}
+        <div class="database-container">
+            <DatabaseTable 
+                config={tableConfig} 
+                {supabase} 
+                initialData={notes} 
+            />
+        </div>
+    {/if}
 
     {#if showEditModal && editingNote}
-        <EditNoteModal
-            note={editingNote}
+        <EditNoteModal 
+            note={editingNote} 
             show={showEditModal}
             onClose={() => {
                 showEditModal = false;
                 editingNote = null;
             }}
             onSave={handleEditSave}
+        />
+    {/if}
+    
+    {#if showListRouterModal && selectedNoteForList}
+        <NoteToListRouter
+            note={selectedNoteForList}
+            showModal={true}
+            on:close={handleListRouterClose}
+            on:success={handleListRouterSuccess}
         />
     {/if}
 </div>

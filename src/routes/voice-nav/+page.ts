@@ -1,17 +1,10 @@
-import { redirect } from '@sveltejs/kit';
-import { supabase } from '$lib/supabase';
-
+// Client-side only page
 export const ssr = false;
 export const prerender = false;
 
-export async function load() {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-        throw redirect(303, '/');
-    }
-    
+// No redirects, just load the page
+export function load() {
     return {
-        user: session.user
+        // Empty data object, authentication will be handled client-side
     };
 }

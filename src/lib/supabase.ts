@@ -1,23 +1,61 @@
-import { createClient } from '@supabase/supabase-js'
-import { env } from '$env/dynamic/public'
+// Import Supabase client and SSR helpers
+import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import type { Cookies } from '@sveltejs/kit';
+import { goto } from '$app/navigation';
 
-// Initialize Supabase client with proper typing
-const supabaseUrl = env.PUBLIC_SUPABASE_URL
-const supabaseKey = env.PUBLIC_SUPABASE_ANON_KEY
+// Since this is a personal app with just you as the user, we can simplify the authentication
+// These values should be your actual Supabase project details from your .env file
+
+// Use environment variables for Supabase credentials
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+
+const supabaseUrl = PUBLIC_SUPABASE_URL;
+const supabaseKey = PUBLIC_SUPABASE_ANON_KEY;
+
+console.log('Using Supabase URL:', supabaseUrl);
 
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables')
+    console.error('Missing Supabase credentials. This is a critical error.');
 }
 
-console.log('Initializing Supabase client with URL:', supabaseUrl)
-
+// Browser client - used for client-side operations
 export const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
     }
-})
+});
+
+/**
+ * Create a Supabase client for server-side operations with cookie handling
+ */
+export function createServerSupabaseClient(cookies: Cookies) {
+    return createServerClient(supabaseUrl, supabaseKey, {
+        cookies: {
+            get: (key) => {
+                const cookie = cookies.get(key);
+                return cookie || '';
+            },
+            set: (key, value, options) => {
+                cookies.set(key, value, {
+                    path: '/',
+                    ...options
+                });
+            },
+            remove: (key, options) => {
+                cookies.delete(key, {
+                    path: '/',
+                    ...options
+                });
+            }
+        }
+    });
+}
+
+// Re-export types for use in other files
+export type { User, Session, SupabaseClient } from '@supabase/supabase-js';
 
 export interface BrainDump {
     id?: string;
@@ -90,14 +128,38 @@ export async function addNoteToSupabase(note: BrainDump) {
         
         console.log('Successfully created Supabase entry:', data);
         return data.id;
-    } catch (error: any) {
-        console.error('Supabase error details:', {
-            name: error.name,
-            code: error?.code,
-            message: error?.message,
-            details: error?.details,
-            stack: error?.stack
-        });
+    } catch (error) {
+        // Handle authentication errors
+        if (typeof error === 'object' && error !== null) {
+            // Check if it's an error with status property
+            if ('status' in error && (error as any).status === 401) {
+                // Redirect to login page for unauthorized errors
+                goto('/login');
+                return;
+            }
+            
+            // Check if it has a message property that includes 'not authenticated'
+            if ('message' in error && 
+                typeof (error as any).message === 'string' && 
+                (error as any).message.includes('not authenticated')) {
+                goto('/login');
+                return;
+            }
+            
+            // Log error details if available
+            const errorObj = error as any;
+            console.error('Supabase error details:', {
+                name: errorObj.name,
+                code: errorObj.code,
+                message: errorObj.message,
+                details: errorObj.details,
+                stack: errorObj.stack
+            });
+        } else {
+            // Log generic error
+            console.error('Auth error:', error);
+        }
+        
         throw error;
     }
 }
@@ -112,6 +174,9 @@ export async function deleteNoteFromSupabase(noteId: string) {
         if (error) throw error;
     } catch (error) {
         console.error('Error deleting note:', error);
-        throw new Error(`Database delete failed: ${error.message}`);
+        
+        // Safely access error message with type checking
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Database delete failed: ${errorMessage}`);
     }
 }

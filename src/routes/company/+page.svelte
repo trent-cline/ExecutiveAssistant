@@ -1,34 +1,143 @@
 <script lang="ts">
-    import { supabase } from '$lib/supabase';
     import { onMount } from 'svelte';
-    import { page } from '$app/stores';
+    import { supabase } from '$lib/supabase';
+    import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
+    import type { Column } from '$lib/components/DatabaseTable/types';
+    import NewProjectModal from '../projects/NewProjectModal.svelte';
     import { goto } from '$app/navigation';
-    import { fade, slide } from 'svelte/transition';
-    import Chart from 'chart.js/auto';
-    import GridContainer from '$lib/components/containers/GridContainer.svelte';
-    import Card from '$lib/components/containers/Card.svelte';
-    import AddFundingModal from '$lib/components/funding/AddFundingModal.svelte';
-    import EditFundingModal from '$lib/components/funding/EditFundingModal.svelte';
-    import FundingStatsContainer from '$lib/components/funding/FundingStatsContainer.svelte';
 
-    let fundingSources: any[] = [];
+    let activeProjects = [];
+    let mentorToLaunchProjects = [];
+    let proBonoProjects = [];
     let loading = true;
-    const FUNDING_GOAL = 750000;
-    let totalFunding = 0;
-    let investorTotal = 0;
-    let clientTotal = 0;
-    let otherTotal = 0;
-    let foundersTotal = 0;
-    let sweatEquityTotal = 0;
-    let equityTotal = 0;
-    let pillarEquity = 100;
-    let pieChart: Chart;
-    let barChart: Chart;
-    let equityChart: Chart;
-    let showAddForm = false;
-    let showEditForm = false;
-    let selectedSource = null;
     let error: string | null = null;
+    let showNewProjectModal = false;
+    let selectedProjectType = 'active';
+
+    const projectTypes = [
+        { id: 'active', label: 'Active Projects', description: 'Web-based app development projects' },
+        { id: 'mentor', label: 'Mentor To Launch', description: 'Small trades business launch projects' },
+        { id: 'probono', label: 'Pro Bono', description: 'Non-profit and social impact projects' }
+    ];
+
+    // Table configs (copy structure from projects page)
+    const activeProjectsConfig = {
+        tableName: 'active_projects',
+        columns: [
+            { id: 'company_name', label: 'Company', type: 'text', template: (value, row) => row && row.id ? `<a href="/projects/${row.id}" class="company-link">${value || ''}</a>` : value || '' },
+            { id: 'partner_name', label: 'Partner', type: 'text' },
+            { id: 'industry', label: 'Industry', type: 'text' },
+            { id: 'website', label: 'Website', type: 'url', template: (value) => value ? `<button class="website-button" onclick="window.open('${value}', '_blank')"><i class="fas fa-arrow-up-right-from-square"></i></button>` : '<span class="no-website">-</span>' },
+            { id: 'ownership', label: 'Ownership %', type: 'percentage' },
+            { id: 'development_revenue', label: 'Dev Revenue', type: 'currency' }
+        ],
+        features: { search: true, filter: true, sort: true, pagination: true, edit: true, delete: true },
+        permissions: { canEdit: (row) => true, canDelete: (row) => true },
+        actions: [
+            { icon: 'pen-to-square', label: 'Edit', handler: (row) => handleProjectEdit(row) },
+            { icon: 'arrow-down', label: 'Move to Mentor', handler: (row) => moveProject(row.id, 'active_projects', 'mentor_to_launch_projects') },
+            { icon: 'chart-line', label: 'Analytics', handler: (row) => showAnalytics(row) },
+            { icon: 'trash-can', label: 'Delete', handler: (row) => handleProjectDelete(row.id, 'active') }
+        ]
+    };
+    const mentorToLaunchConfig = {
+        tableName: 'mentor_to_launch_projects',
+        columns: [
+            { id: 'company_name', label: 'Business', type: 'text', template: (value, row) => row && row.id ? `<a href="/projects/${row.id}" class="company-link">${value || ''}</a>` : value || '' },
+            { id: 'website', label: 'Website', type: 'url', template: (value) => value ? `<a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link"><i class="fas fa-arrow-up-right-from-square"></i></a>` : '<span class="no-website">-</span>' },
+            { id: 'owner_name', label: 'Owner', type: 'text' },
+            { id: 'industry', label: 'Industry', type: 'text' },
+            { id: 'status', label: 'Status', type: 'text', template: (value) => `<span class="status status-${value?.toLowerCase?.()}">${value}</span>` }
+        ],
+        features: { search: true, filter: true, sort: true, pagination: true, edit: true, delete: true },
+        permissions: { canEdit: (row) => true, canDelete: (row) => true },
+        actions: [
+            { icon: 'pen-to-square', label: 'Edit', handler: (row) => handleProjectEdit(row) },
+            { icon: 'arrow-up', label: 'Move to Active', handler: (row) => moveProject(row.id, 'mentor_to_launch_projects', 'active_projects') },
+            { icon: 'trash-can', label: 'Delete', handler: (row) => handleProjectDelete(row.id, 'mentor') }
+        ]
+    };
+    const proBonoConfig = {
+        tableName: 'pro_bono_projects',
+        columns: [
+            { id: 'company_name', label: 'Organization', type: 'text', template: (value, row) => row && row.id ? `<a href="/projects/${row.id}" class="company-link">${value || ''}</a>` : value || '' },
+            { id: 'industry', label: 'Industry', type: 'text' },
+            { id: 'website', label: 'Website', type: 'url', template: (value) => value ? `<a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link"><i class="fas fa-arrow-up-right-from-square"></i></a>` : '<span class="no-website">-</span>' },
+            { id: 'status', label: 'Status', type: 'text', template: (value) => `<span class="status status-${value?.toLowerCase?.()}">${value}</span>` }
+        ],
+        features: { search: true, filter: true, sort: true, pagination: true, edit: true, delete: true },
+        permissions: { canEdit: (row) => true, canDelete: (row) => true },
+        actions: [
+            { icon: 'pen-to-square', label: 'Edit', handler: (row) => handleProjectEdit(row) },
+            { icon: 'trash-can', label: 'Delete', handler: (row) => handleProjectDelete(row.id, 'probono') }
+        ]
+    };
+
+    function handleProjectEdit(row) {
+        // TODO: Implement edit modal if needed
+        // For now, just reload
+        loadProjects();
+    }
+
+    function handleProjectDelete(id, type) {
+        // TODO: Implement delete logic if needed
+        loadProjects();
+    }
+
+    async function moveProject(projectId: string, fromTable: string, targetTable: string) {
+        try {
+            const { data: projectData, error: fetchError } = await supabase
+                .from(fromTable)
+                .select('*')
+                .eq('id', projectId)
+                .single();
+            if (fetchError) throw fetchError;
+            const { error: insertError } = await supabase
+                .from(targetTable)
+                .insert([projectData]);
+            if (insertError) throw insertError;
+            const { error: deleteError } = await supabase
+                .from(fromTable)
+                .delete()
+                .eq('id', projectId);
+            if (deleteError) throw deleteError;
+            await loadProjects();
+        } catch (err) {
+            error = err.message;
+        }
+    }
+
+    async function showAnalytics(row) {
+        // TODO: Implement analytics view
+        console.log('Show analytics for:', row);
+    }
+
+    function handleAddProject(type) {
+        selectedProjectType = type;
+        showNewProjectModal = true;
+    }
+
+    function handleProjectAdded() {
+        showNewProjectModal = false;
+        loadProjects();
+    }
+
+    async function loadProjects() {
+        loading = true;
+        try {
+            const [active, mentor, probono] = await Promise.all([
+                supabase.from('active_projects').select('*').order('created_at', { ascending: false }),
+                supabase.from('mentor_to_launch_projects').select('*').order('created_at', { ascending: false }),
+                supabase.from('pro_bono_projects').select('*').order('created_at', { ascending: false })
+            ]);
+            activeProjects = active.data || [];
+            mentorToLaunchProjects = mentor.data || [];
+            proBonoProjects = probono.data || [];
+        } catch (err) {
+            error = err.message;
+        }
+        loading = false;
+    }
 
     onMount(async () => {
         const { data: session } = await supabase.auth.getSession();
@@ -36,237 +145,8 @@
             goto('/login');
             return;
         }
-        await loadFundingSources();
-        initializeCharts();
+        await loadProjects();
     });
-
-    async function loadFundingSources() {
-        const { data, error } = await supabase
-            .from('funding_sources')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Error loading funding sources:', error);
-            return;
-        }
-
-        fundingSources = data || [];
-        calculateTotals();
-        if (pieChart) updateCharts();
-    }
-
-    function calculateTotals() {
-        investorTotal = 0;
-        clientTotal = 0;
-        otherTotal = 0;
-        foundersTotal = 0;
-        sweatEquityTotal = 0;
-        equityTotal = 0;
-
-        fundingSources.forEach((source) => {
-            const amount = parseFloat(source.amount);
-            const equity = parseFloat(source.equity) || 0;
-            
-            switch (source.type) {
-                case 'investor':
-                    investorTotal += amount;
-                    break;
-                case 'client':
-                    clientTotal += amount;
-                    break;
-                case 'founder':
-                    foundersTotal += amount;
-                    break;
-                case 'sweat-equity':
-                    sweatEquityTotal += amount;
-                    break;
-                default:
-                    otherTotal += amount;
-            }
-            
-            equityTotal += equity;
-        });
-
-        totalFunding = investorTotal + clientTotal + otherTotal + foundersTotal + sweatEquityTotal;
-        pillarEquity = Math.max(0, 100 - equityTotal);
-    }
-
-    function initializeCharts() {
-        if (pieChart) pieChart.destroy();
-        if (barChart) barChart.destroy();
-        if (equityChart) equityChart.destroy();
-
-        // Pie Chart for funding distribution
-        const pieCtx = document.getElementById('fundingDistribution') as HTMLCanvasElement;
-        pieChart = new Chart(pieCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Investors', 'Founders', 'Sweat Equity', 'Clients', 'Other'],
-                datasets: [{
-                    data: [investorTotal, foundersTotal, sweatEquityTotal, clientTotal, otherTotal],
-                    backgroundColor: ['#4F46E5', '#22C55E', '#EC4899', '#10B981', '#F59E0B']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-
-        // Bar Chart for funding progress
-        const barCtx = document.getElementById('fundingProgress') as HTMLCanvasElement;
-        barChart = new Chart(barCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Current Funding', 'Goal'],
-                datasets: [{
-                    label: 'Funding Progress',
-                    data: [totalFunding, FUNDING_GOAL],
-                    backgroundColor: ['#10B981', '#E5E7EB']
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: (value) => '$' + value.toLocaleString()
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-
-        // Equity distribution chart
-        const equityCtx = document.getElementById('equityDistribution') as HTMLCanvasElement;
-        equityChart = new Chart(equityCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Pillar', ...fundingSources.map(s => s.name)],
-                datasets: [{
-                    data: [pillarEquity, ...fundingSources.map(s => parseFloat(s.equity) || 0)],
-                    backgroundColor: ['#4F46E5', '#22C55E', '#EC4899', '#10B981', '#F59E0B', '#6366F1', '#8B5CF6', '#D946EF']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const value = context.raw as number;
-                                return `${value.toFixed(2)}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    function updateCharts() {
-        if (pieChart) {
-            pieChart.data.datasets[0].data = [investorTotal, foundersTotal, sweatEquityTotal, clientTotal, otherTotal];
-            pieChart.update();
-        }
-        if (barChart) {
-            barChart.data.datasets[0].data = [totalFunding, FUNDING_GOAL];
-            barChart.update();
-        }
-        if (equityChart) {
-            equityChart.data.labels = ['Pillar', ...fundingSources.map(s => s.name)];
-            equityChart.data.datasets[0].data = [pillarEquity, ...fundingSources.map(s => parseFloat(s.equity) || 0)];
-            equityChart.update();
-        }
-    }
-
-    async function addFundingSource(event: CustomEvent) {
-        const newSource = event.detail;
-        try {
-            const { data, error: err } = await supabase
-                .from('funding_sources')
-                .insert([newSource])
-                .select()
-                .single();
-
-            if (err) throw err;
-
-            fundingSources = [data, ...fundingSources];
-            calculateTotals();
-            updateCharts();
-            showAddForm = false;
-        } catch (err: any) {
-            console.error('Error adding funding source:', err);
-            error = err.message;
-        }
-    }
-
-    async function editFundingSource(event: CustomEvent) {
-        try {
-            const updatedSource = event.detail;
-            const { error: updateError } = await supabase
-                .from('funding_sources')
-                .update({
-                    name: updatedSource.name,
-                    type: updatedSource.type,
-                    amount: updatedSource.amount,
-                    equity: updatedSource.equity,
-                    notes: updatedSource.notes,
-                    updated_at: new Date()
-                })
-                .eq('id', updatedSource.id);
-
-            if (updateError) throw updateError;
-
-            await loadFundingSources();
-            showEditForm = false;
-            selectedSource = null;
-        } catch (err: any) {
-            console.error('Error updating funding source:', err);
-            error = err.message;
-        }
-    }
-
-    async function deleteFundingSource(event: CustomEvent) {
-        try {
-            const sourceId = event.detail;
-            const { error: deleteError } = await supabase
-                .from('funding_sources')
-                .delete()
-                .eq('id', sourceId);
-
-            if (deleteError) throw deleteError;
-
-            await loadFundingSources();
-            showEditForm = false;
-            selectedSource = null;
-        } catch (err: any) {
-            console.error('Error deleting funding source:', err);
-            error = err.message;
-        }
-    }
-
-    function handleEditClick(source) {
-        selectedSource = source;
-        showEditForm = true;
-    }
-
-    $: progress = (totalFunding / FUNDING_GOAL) * 100;
-    $: remainingFunding = FUNDING_GOAL - totalFunding;
 </script>
 
 <svelte:head>
@@ -281,114 +161,63 @@
                 <h1>Pillar Apps, LLC</h1>
                 <p>Financial Dashboard & Funding Management</p>
             </div>
-            <button
-                class="add-button"
-                on:click={() => showAddForm = !showAddForm}
-            >
-                <i class="fas fa-plus"></i>
-                {showAddForm ? 'Cancel' : 'Add Funding Source'}
-            </button>
+
         </div>
 
         <!-- Main Grid Layout -->
         <div class="main-grid">
             <!-- Main Content -->
             <div class="main-content">
-                <!-- Funding Stats Container -->
-                <FundingStatsContainer
-                    {totalFunding}
-                    {remainingFunding}
-                    {fundingSources}
-                    fundingGoal={FUNDING_GOAL}
+                <!-- Project Tables (all types) -->
+                {#if loading}
+                    <div class="loading">Loading projects...</div>
+                {:else if error}
+                    <div class="error">{error}</div>
+                {:else}
+                    {#each projectTypes as projectType}
+    <section class="project-section">
+        <div class="project-card">
+            <div class="section-header">
+                <h2>{projectType.label}</h2>
+                <p class="section-description">{projectType.description}</p>
+                <button class="add-project-btn" on:click={() => handleAddProject(projectType.id)}>
+                    <i class="fas fa-plus"></i> Add Project
+                </button>
+            </div>
+            <div class="table-container">
+                {#if projectType.id === 'active'}
+                    <DatabaseTable
+                        config={activeProjectsConfig}
+                        supabase={supabase}
+                        initialData={activeProjects}
+                        onDataChange={(data) => activeProjects = data}
+                    />
+                {:else if projectType.id === 'mentor'}
+                    <DatabaseTable
+                        config={mentorToLaunchConfig}
+                        supabase={supabase}
+                        initialData={mentorToLaunchProjects}
+                        onDataChange={(data) => mentorToLaunchProjects = data}
+                    />
+                {:else if projectType.id === 'probono'}
+                    <DatabaseTable
+                        config={proBonoConfig}
+                        supabase={supabase}
+                        initialData={proBonoProjects}
+                        onDataChange={(data) => proBonoProjects = data}
+                    />
+                {/if}
+            </div>
+        </div>
+    </section>
+{/each}
+                {/if}
+                <NewProjectModal
+                    show={showNewProjectModal}
+                    projectType={selectedProjectType}
+                    on:projectAdded={handleProjectAdded}
+                    on:close={() => showNewProjectModal = false}
                 />
-
-                <!-- Charts Grid -->
-                <div class="charts-grid">
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>Funding Progress</h3>
-                            <div class="chart-actions">
-                                <button class="chart-button" aria-label="Expand funding progress chart">
-                                    <i class="fas fa-expand" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="fundingProgress"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>Funding Distribution</h3>
-                            <div class="chart-actions">
-                                <button class="chart-button" aria-label="Expand funding distribution chart">
-                                    <i class="fas fa-expand" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="fundingDistribution"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-header">
-                            <h3>Equity Distribution</h3>
-                            <div class="chart-actions">
-                                <button class="chart-button" aria-label="Expand equity distribution chart">
-                                    <i class="fas fa-expand" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="equityDistribution"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Funding Sources List -->
-                <div class="funding-sources">
-                    <div class="funding-header">
-                        <h3>Funding Sources</h3>
-                        <button class="add-button" on:click={() => showAddForm = true}>
-                            <i class="fas fa-plus"></i>
-                            Add Source
-                        </button>
-                    </div>
-                    <div class="source-list">
-                        {#each fundingSources as source}
-                            <div class="source-item" on:click={() => handleEditClick(source)}>
-                                <div class="source-icon">
-                                    {#if source.type === 'investor'}
-                                        <i class="fas fa-user-tie"></i>
-                                    {:else if source.type === 'client'}
-                                        <i class="fas fa-briefcase"></i>
-                                    {:else if source.type === 'founder'}
-                                        <i class="fas fa-crown"></i>
-                                    {:else if source.type === 'sweat-equity'}
-                                        <i class="fas fa-hammer"></i>
-                                    {:else}
-                                        <i class="fas fa-circle"></i>
-                                    {/if}
-                                </div>
-                                <div class="source-content">
-                                    <div class="source-header">
-                                        <h4>{source.name}</h4>
-                                        <div class="source-tags">
-                                            <span class="tag {source.type}">{source.type}</span>
-                                            {#if source.equity > 0}
-                                                <span class="tag equity">{source.equity}%</span>
-                                            {/if}
-                                        </div>
-                                    </div>
-                                    <p class="source-amount">${source.amount.toLocaleString()}</p>
-                                    {#if source.notes}
-                                        <p class="source-notes">{source.notes}</p>
-                                    {/if}
-                                </div>
-                            </div>
-                        {/each}
-                    </div>
-                </div>
             </div>
 
             <!-- Sidebar -->
@@ -435,45 +264,47 @@
                             </div>
                             <i class="fas fa-chevron-right tool-arrow"></i>
                         </a>
+                        <a href="/company/pressure-calculator" class="tool-item">
+                            <div class="tool-icon">
+                                <i class="fas fa-gauge-high"></i>
+                            </div>
+                            <div class="tool-content">
+                                <h4>Pressure Calculator</h4>
+                            </div>
+                            <i class="fas fa-chevron-right tool-arrow"></i>
+                        </a>
+                        <a href="/company/team" class="tool-item">
+                            <div class="tool-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="tool-content">
+                                <h4>Team Meetings</h4>
+                            </div>
+                            <i class="fas fa-chevron-right tool-arrow"></i>
+                        </a>
+                        <a href="/company/info" class="tool-item">
+                            <div class="tool-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div class="tool-content">
+                                <h4>Company Information</h4>
+                            </div>
+                            <i class="fas fa-chevron-right tool-arrow"></i>
+                        </a>
                     </div>
                 </div>
                 
-                <!-- Add Funding Form -->
-                <Card>
-                    <div class="funding-header">
-                        <h2>Funding Sources</h2>
-                        <div class="funding-actions">
-                            <button 
-                                class="add-button"
-                                on:click={() => showAddForm = true}
-                            >
-                                <i class="fas fa-plus"></i>
-                                Add Source
-                            </button>
-                        </div>
-                    </div>
-                </Card>
-
-                <!-- Quick Stats -->
+                <!-- Sidebar Quick Stats (example, non-funding) -->
                 <div class="stats-card">
                     <div class="stats-header">
                         <h3>Quick Stats</h3>
                     </div>
                     <div class="quick-stats">
                         <div class="stat-item">
-                            <div class="stat-label">Average Investment</div>
-                            <div class="stat-value">
-                                ${(totalFunding / (fundingSources.length || 1)).toLocaleString()}
-                            </div>
+                            <div class="stat-label">Active Projects</div>
+                            <div class="stat-value">{activeProjects.length}</div>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Last Updated</div>
-                            <div class="stat-value">
-                                {fundingSources.length > 0 
-                                    ? new Date(fundingSources[0].created_at).toLocaleDateString()
-                                    : 'No data'}
-                            </div>
-                        </div>
+                        <!-- Add other non-funding stats here if desired -->
                     </div>
                 </div>
             </div>
@@ -481,24 +312,7 @@
     </div>
 </div>
 
-{#if showAddForm}
-    <AddFundingModal 
-        on:close={() => showAddForm = false}
-        on:submit={addFundingSource}
-    />
-{/if}
 
-{#if showEditForm && selectedSource}
-    <EditFundingModal 
-        fundingSource={selectedSource}
-        on:close={() => {
-            showEditForm = false;
-            selectedSource = null;
-        }}
-        on:submit={editFundingSource}
-        on:delete={deleteFundingSource}
-    />
-{/if}
 
 <style>
     .page-container {
@@ -1035,4 +849,65 @@
             padding: 0.625rem;
         }
     }
+.project-card {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1.5px 4px rgba(0,0,0,0.03);
+    padding: 2rem 2rem 1.5rem 2rem;
+    margin-bottom: 2rem;
+    transition: box-shadow 0.2s;
+}
+.project-card:hover {
+    box-shadow: 0 6px 24px rgba(0,0,0,0.11), 0 2px 8px rgba(0,0,0,0.06);
+}
+.table-container {
+    margin-top: 1rem;
+}
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+.section-header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+.section-description {
+    color: #6b7280;
+    font-size: 1rem;
+    flex: 1 1 200px;
+    margin: 0 1rem;
+}
+.add-project-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.15s;
+}
+.add-project-btn:hover {
+    background: #1d4ed8;
+}
+@media (max-width: 700px) {
+    .project-card {
+        padding: 1rem 0.5rem 1rem 0.5rem;
+    }
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
 </style>

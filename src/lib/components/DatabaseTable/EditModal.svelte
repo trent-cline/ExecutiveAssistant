@@ -76,8 +76,9 @@
     <div 
         class="modal-content" 
         on:click|stopPropagation 
-        transition:fly="{{ y: 20, duration: 300 }}" 
+        on:keydown|stopPropagation
         role="document"
+        transition:fly="{{ y: 20, duration: 300 }}" 
     >
         <div class="modal-header">
             <h2 id="modal-title">{row.id ? 'Edit' : 'Add'} Record</h2>

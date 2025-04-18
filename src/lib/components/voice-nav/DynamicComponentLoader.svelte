@@ -42,6 +42,7 @@
                     componentData = { goals: data || [] };
                     break;
                 }
+                // Projects page has been removed, redirecting to company page
                 case 'projects': {
                     const { data, error: err } = await supabase
                         .from('active_projects')
@@ -50,6 +51,7 @@
                     
                     if (err) throw err;
                     componentData = { projects: data || [] };
+                    // Note: Projects are now shown on the company page
                     break;
                 }
                 case 'shopping': {
@@ -113,8 +115,10 @@
         loading = true;
         try {
             switch (name) {
+                // Projects page has been removed, redirecting to company page
                 case 'projects': {
-                    const module = await import('../projects/ProjectsList.svelte');
+                    // Redirect to company dashboard instead since projects are now there
+                    const module = await import('../company/CompanyDashboard.svelte');
                     return module.default;
                 }
                 case 'shopping': {
@@ -189,7 +193,6 @@
             <ul class="list-disc list-inside space-y-1">
                 <li>Brain Inbox</li>
                 <li>Goals</li>
-                <li>Projects</li>
                 <li>Shopping List</li>
                 <li>DLLTW Notes</li>
                 <li>Private Notes</li>

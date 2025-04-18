@@ -95,30 +95,21 @@
             </a>
 
             <a 
-                href="/company" 
-                class:active={$page.url.pathname === '/company'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-building" aria-hidden="true"></i>
-                Pillar Apps
-            </a>
-
-            <a 
-                href="/projects" 
-                class:active={$page.url.pathname === '/projects'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-tasks" aria-hidden="true"></i>
-                Active Projects
-            </a>    
-
-            <a 
                 href="/prm" 
                 class:active={$page.url.pathname.startsWith('/prm')} 
                 on:click={() => isMobile && (isOpen = false)}
             >
                 <i class="fas fa-address-book" aria-hidden="true"></i>
                 Relationships
+            </a>
+            <div class="sidebar-separator"></div>
+            <a 
+                href="/company" 
+                class:active={$page.url.pathname === '/company'} 
+                on:click={() => isMobile && (isOpen = false)}
+            >
+                <i class="fas fa-building" aria-hidden="true"></i>
+                Pillar Apps
             </a>
             
             <button class="logout-btn" on:click={handleLogout}>
@@ -188,6 +179,13 @@
         padding-bottom: 1.25rem;
         border-bottom: 1px solid #333;
         margin-bottom: 1.25rem;
+    }
+
+    .sidebar-separator {
+        border-top: 1.5px solid #3b3b3b;
+        margin: 1.25rem 0 1rem 0;
+        width: 90%;
+        align-self: center;
     }
 
     h2 {

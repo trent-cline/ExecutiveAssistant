@@ -2,9 +2,7 @@
     import '../app.css';
     import { browser } from '$app/environment';
     import { page } from '$app/stores';
-    import { goto } from '$app/navigation';
-    import { user } from '$lib/auth';
-    import { supabase } from '$lib/supabase';
+    import { user, session, initAuth } from '$lib/auth';
     import Sidebar from '$lib/components/Sidebar.svelte';
     import HamburgerMenu from '$lib/components/HamburgerMenu.svelte';
     import FloatingVoiceRecorder from '$lib/components/FloatingVoiceRecorder.svelte';
@@ -14,37 +12,11 @@
 
     let isMenuOpen = false;
     let isMobile = false;
-    let initialAuthCheckComplete = false;
 
-    // Protected routes that require authentication
-    const protectedRoutes = [
-        '/table',
-        '/goals',
-        '/shopping-list',
-        '/active-projects',
-        '/dlltw-notes',
-        '/private-notes',
-        '/company',
-        '/company/structure',
-        '/company/cloud-costs',
-        '/prm'
-    ];
-
-    onMount(async () => {
-        // Set initial user state from server data
-        user.set(data.user);
-        initialAuthCheckComplete = true;
-
-        const unsubscribe = user.subscribe(($user) => {
-            if (!initialAuthCheckComplete) return;
-            
-            if ($user && $page.url.pathname === '/') {
-                goto('/table');
-            } else if (!$user && protectedRoutes.some(route => $page.url.pathname.startsWith(route))) {
-                goto('/');
-            }
-        });
-
+    onMount(() => {
+        // Initialize auth with data from server
+        const authUnsubscribe = initAuth(data.user, data.session);
+        
         // Check window size on mount
         if (browser) {
             const checkSize = () => {
@@ -52,21 +24,18 @@
             };
             checkSize();
             window.addEventListener('resize', checkSize);
-        }
-
-        return () => {
-            unsubscribe();
-            if (browser) {
+            
+            return () => {
+                authUnsubscribe.unsubscribe();
                 window.removeEventListener('resize', checkSize);
+            };
+        }
+        
+        return () => {
+            if (authUnsubscribe) {
+                authUnsubscribe.unsubscribe();
             }
         };
-    });
-
-    // Cleanup
-    onDestroy(() => {
-        if (browser) {
-            // Removed event listener in onMount return function
-        }
     });
 </script>
 

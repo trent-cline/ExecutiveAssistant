@@ -23,7 +23,12 @@
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click={handleClose}></div>
+    <div 
+    class="modal-backdrop" 
+    on:click={handleClose} 
+    on:keydown={(e) => e.key === 'Escape' && handleClose()} 
+    role="presentation"
+></div>
     <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-content">
             <header class="modal-header">

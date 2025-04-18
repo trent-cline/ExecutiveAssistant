@@ -1,41 +1,53 @@
 <script lang="ts">
-    import { supabase } from '$lib/supabase';
-    import { goto } from '$app/navigation';
-    import { user } from '$lib/auth';
+    import { signIn, isLoading, user } from '$lib/auth';
+    import { onMount } from 'svelte';
 
     let email = '';
     let password = '';
-    let loading = false;
     let error = '';
+    let loading = false;
 
-    async function handleLogin() {
+    async function handleLogin(event: SubmitEvent) {
+        event.preventDefault();
+        loading = true;
+        error = '';
+
+        if (!email || !password) {
+            error = 'Please enter both email and password';
+            loading = false;
+            return;
+        }
+
         try {
-            loading = true;
-            error = '';
+            console.log('Attempting to sign in with:', { email });
+            const result = await signIn(email, password);
             
-            const { data, error: err } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-
-            if (err) throw err;
-            
-            if (data.session) {
-                goto('/');
+            // Make sure result is defined before accessing properties
+            if (result && !result.success) {
+                // Handle specific error cases with user-friendly messages
+                const errorMsg = result.error || '';
+                
+                if (errorMsg.includes('network') || errorMsg.includes('connect')) {
+                    error = 'Network error: Please check your internet connection and try again';
+                } else if (errorMsg.includes('credentials') || errorMsg.includes('password')) {
+                    error = 'Invalid credentials: Please check your email and password';
+                } else {
+                    error = errorMsg || 'Failed to sign in';
+                }
+                console.error('Login error:', error);
+            } else if (result) {
+                console.log('Login successful, redirecting...');
+            } else {
+                error = 'An unexpected error occurred during login';
+                console.error('Login failed with undefined result');
             }
-        } catch (e: any) {
-            error = e.message;
+        } catch (e) {
+            console.error('Unexpected login error:', e);
+            error = e instanceof Error ? e.message : 'An unexpected error occurred';
         } finally {
             loading = false;
         }
     }
-
-    // Redirect if already logged in
-    user.subscribe((value) => {
-        if (value) {
-            goto('/');
-        }
-    });
 </script>
 
 <div class="login-container">
@@ -56,7 +68,7 @@
                     id="email"
                     bind:value={email}
                     required
-                    disabled={loading}
+                    disabled={$isLoading}
                 />
             </div>
 
@@ -67,12 +79,12 @@
                     id="password"
                     bind:value={password}
                     required
-                    disabled={loading}
+                    disabled={$isLoading}
                 />
             </div>
 
-            <button type="submit" disabled={loading}>
-                {loading ? 'Logging in...' : 'Login'}
+            <button type="submit" disabled={$isLoading}>
+                {$isLoading ? 'Logging in...' : 'Login'}
             </button>
         </form>
     </div>

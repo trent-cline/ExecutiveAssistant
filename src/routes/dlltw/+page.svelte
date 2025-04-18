@@ -158,6 +158,14 @@
 
 <div class="dlltw-container">
     <div class="main-content">
+        <div class="dlltw-top-links" style="margin-bottom: 1.5rem; display: flex; gap: 1rem;">
+            <a href="/dlltw/writing-companion" class="writing-link">
+                ✍️ Try the AI Writing Companion
+            </a>
+            <a href="/dlltw/context-templates" class="context-link">
+                📄 Context Templates
+            </a>
+        </div>
         <div class="header">
             <h1>Don't Live Life This Way - Notes</h1>
             <div class="filters">

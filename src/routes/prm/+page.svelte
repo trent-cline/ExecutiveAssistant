@@ -20,6 +20,17 @@
         ],
         body: []
     };
+    
+    // Upcoming birthdays table
+    let upcomingBirthdaysSource: TableSource = {
+        head: [
+            { key: 'display_name', title: 'Name' },
+            { key: 'relationship_type', title: 'Group' },
+            { key: 'birth_date', title: 'Birth Date' },
+            { key: 'days_until', title: 'Days Until' }
+        ],
+        body: []
+    };
 
     // Mobile-responsive column configuration
     $: if (typeof window !== 'undefined') {
@@ -83,6 +94,55 @@
         };
 
         console.log('Formatted table data:', tableSource.body);
+        
+        // Process upcoming birthdays
+        loadUpcomingBirthdays(data);
+    }
+    
+    function loadUpcomingBirthdays(contacts) {
+        // Filter contacts with birth dates and calculate days until next birthday
+        const today = new Date();
+        const contactsWithBirthdays = contacts
+            .filter(contact => contact.birth_date)
+            .map(contact => {
+                const birthDate = new Date(contact.birth_date);
+                const birthMonth = birthDate.getMonth();
+                const birthDay = birthDate.getDate();
+                
+                // Calculate next birthday
+                let nextBirthday = new Date(today.getFullYear(), birthMonth, birthDay);
+                
+                // If birthday has already occurred this year, set for next year
+                if (nextBirthday < today) {
+                    nextBirthday = new Date(today.getFullYear() + 1, birthMonth, birthDay);
+                }
+                
+                // Calculate days until birthday
+                const diffTime = nextBirthday.getTime() - today.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                return {
+                    ...contact,
+                    nextBirthday,
+                    daysUntil: diffDays
+                };
+            })
+            // Filter for birthdays in the next 30 days
+            .filter(contact => contact.daysUntil <= 30)
+            // Sort by days until birthday (ascending)
+            .sort((a, b) => a.daysUntil - b.daysUntil);
+        
+        // Update the upcoming birthdays table source
+        upcomingBirthdaysSource = {
+            ...upcomingBirthdaysSource,
+            body: contactsWithBirthdays.map(contact => ({
+                id: contact.id,
+                display_name: contact.display_name,
+                relationship_type: formatRelationshipType(contact.relationship_type),
+                birth_date: new Date(contact.birth_date).toLocaleDateString(),
+                days_until: `${contact.daysUntil} day${contact.daysUntil === 1 ? '' : 's'}`
+            }))
+        };
     }
 
     function formatRelationshipType(type: string) {
@@ -200,6 +260,45 @@
             <p>Please sign in to view and manage your contacts.</p>
         </div>
     {:else}
+        <!-- Upcoming Birthdays Section -->
+        <div class="card p-4 mb-6">
+            <h3 class="h3 mb-4">Upcoming Birthdays</h3>
+            {#if upcomingBirthdaysSource.body.length === 0}
+                <p class="text-center p-4">No upcoming birthdays in the next 30 days.</p>
+            {:else}
+                <div class="overflow-x-auto">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Group</th>
+                                <th>Birth Date</th>
+                                <th>Days Until</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {#each upcomingBirthdaysSource.body as contact}
+                                <tr 
+                                    class="hover:variant-soft-primary cursor-pointer"
+                                    on:click={() => openEditContactModal(contact)}
+                                    on:keypress={(e) => e.key === 'Enter' && openEditContactModal(contact)}
+                                    tabindex="0"
+                                    role="button"
+                                >
+                                    <td>{contact.display_name}</td>
+                                    <td>{contact.relationship_type}</td>
+                                    <td>{contact.birth_date}</td>
+                                    <td class="font-semibold">{contact.days_until}</td>
+                                </tr>
+                            {/each}
+                        </tbody>
+                    </table>
+                </div>
+            {/if}
+        </div>
+        
+        <!-- All Contacts Section -->
+        <h3 class="h3 mb-4">All Contacts</h3>
         {#if tableSource.body.length === 0}
             <div class="card p-8 text-center">
                 <p>No contacts found. Add your first contact using the button above.</p>

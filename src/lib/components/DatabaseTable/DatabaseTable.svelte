@@ -9,7 +9,7 @@
     import TableMilestones from './TableMilestones.svelte';
     import TableFilters from './TableFilters.svelte';
     import { user } from '$lib/auth';
-    import { SupabaseClient } from '@supabase/supabase-js';
+    import type { SupabaseClient } from '$lib/supabase';
 
     export let config: DatabaseTableConfig;
     export let supabase: SupabaseClient;
