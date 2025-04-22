@@ -24,7 +24,7 @@
             switch (name) {
                 case 'brain-inbox': {
                     const { data, error: err } = await supabase
-                        .from('brain_dump_database')
+                        .from('brain_dump')
                         .select('*')
                         .order('created_at', { ascending: false });
                     

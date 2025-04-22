@@ -5,8 +5,81 @@
     import type { TableSource } from '@skeletonlabs/skeleton';
     import AddContactForm from '$lib/components/AddContactForm.svelte';
     import EditContactForm from '$lib/components/EditContactForm.svelte';
+    import { Modal } from '@skeletonlabs/skeleton';
+    import ContactRow from '$lib/components/PRM/ContactRow.svelte';
+    import { isSidebarOpen } from '$lib/stores/sidebar';
+
+    // Define handleRowClick for use in template
+    function handleRowClick(event: CustomEvent<any>) {
+        // Robust: close sidebar on mobile if open, then open modal
+        if (typeof window !== 'undefined' && window.innerWidth < 1024 && isSidebarOpen && typeof isSidebarOpen.set === 'function') {
+            isSidebarOpen.set(false);
+            setTimeout(() => openEditContactModal(event.detail), 300); // Wait for sidebar to close
+        } else {
+            openEditContactModal(event.detail);
+        }
+    }
 
     const modalStore = getModalStore();
+    let selectedContact = null;
+    let showEditModal = false;
+    let showAddModal = false;
+
+    function openEditContactModal(contact) {
+        selectedContact = contact;
+        showEditModal = true;
+        modalStore.trigger({
+            type: 'component',
+            component: {
+                ref: EditContactForm,
+                props: {
+                    contact,
+                    parent: {
+                        onUpdate: async (updatedContact) => {
+                            await updateContact(updatedContact);
+                            await loadContacts();
+                            modalStore.close();
+                        }
+                    }
+                }
+            },
+            size: 'lg',
+            closeButton: true
+        });
+    }
+
+    function openAddContactModal() {
+        showAddModal = true;
+        modalStore.trigger({
+            type: 'component',
+            component: {
+                ref: AddContactForm,
+                props: {
+                    parent: {
+                        onSubmit: async (newContact) => {
+                            await saveContact(newContact);
+                            await loadContacts();
+                            modalStore.close();
+                        }
+                    }
+                }
+            },
+            size: 'lg',
+            closeButton: true
+        });
+    }
+
+    async function updateContact(updatedContact) {
+        if (!currentUserId) return;
+        const { data, error } = await supabase
+            .from('contacts')
+            .update(updatedContact)
+            .eq('id', updatedContact.id);
+        if (error) {
+            console.error('Error updating contact:', error);
+        }
+        return data;
+    }
     let currentUserId: string | null = null;
 
     let tableSource: TableSource = {
@@ -180,61 +253,18 @@
             console.error('Error saving contact:', error);
             return;
         }
-
-        console.log('Contact saved:', data);
-        loadContacts();
     }
 
-    async function updateContact(updatedContact: any) {
-        if (!currentUserId) return;
-        
-        console.log('Updating contact:', updatedContact);
-        const { data, error } = await supabase
-            .from('contacts')
-            .update({
-                ...updatedContact,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', updatedContact.id);
-
-        if (error) {
-            console.error('Error updating contact:', error);
-            return;
+    // Mobile-responsive column configuration
+    $: if (typeof window !== 'undefined') {
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            tableSource.head = [
+                { key: 'display_name', title: 'Name' },
+                { key: 'relationship_type', title: 'Group' },
+                { key: 'mobile_number', title: 'Mobile' }
+            ];
         }
-
-        console.log('Contact updated:', data);
-        loadContacts();
-    }
-
-    function openAddContactModal() {
-        const modal = {
-            type: 'component',
-            component: {
-                ref: AddContactForm,
-                props: {
-                    parent: {
-                        onSubmit: saveContact
-                    }
-                }
-            }
-        };
-        modalStore.trigger(modal);
-    }
-
-    function openEditContactModal(contact: any) {
-        const modal = {
-            type: 'component',
-            component: {
-                ref: EditContactForm,
-                props: {
-                    parent: {
-                        onUpdate: updateContact
-                    },
-                    contact: contact
-                }
-            }
-        };
-        modalStore.trigger(modal);
     }
 
     onMount(async () => {
@@ -314,24 +344,16 @@
                             <th>Email</th>
                             <th>Birth Date</th>
                             <th>Last Contact</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {#each tableSource.body as contact}
-                            <tr 
-                                class="hover:variant-soft-primary cursor-pointer"
-                                on:click={() => openEditContactModal(contact)}
-                                on:keypress={(e) => e.key === 'Enter' && openEditContactModal(contact)}
-                                tabindex="0"
-                                role="button"
-                            >
-                                <td>{contact.display_name}</td>
-                                <td>{contact.relationship_type}</td>
-                                <td>{contact.mobile_number}</td>
-                                <td>{contact.email_address}</td>
-                                <td>{contact.birth_date}</td>
-                                <td>{contact.last_contact_date}</td>
-                            </tr>
+                        {#each tableSource.body as contact (contact.id)}
+                            <ContactRow
+                                {contact}
+                                on:rowClick={handleRowClick}
+                                onEdit={openEditContactModal}
+                            />
                         {/each}
                     </tbody>
                 </table>

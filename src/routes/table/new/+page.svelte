@@ -39,7 +39,7 @@
             }
 
             const { data, error } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .insert([noteData])
                 .select();
 

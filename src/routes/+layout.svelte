@@ -1,5 +1,7 @@
 <script lang="ts">
     import '../app.css';
+    import { Modal, initializeStores } from '@skeletonlabs/skeleton';
+    initializeStores();
     import { browser } from '$app/environment';
     import { page } from '$app/stores';
     import { user, session, initAuth } from '$lib/auth';
@@ -10,7 +12,7 @@
 
     export let data;
 
-    let isMenuOpen = false;
+    
     let isMobile = false;
 
     onMount(() => {
@@ -41,11 +43,12 @@
 
 <div class="app-container">
     {#if $user || $page.url.pathname === '/'}
-        <HamburgerMenu bind:isOpen={isMenuOpen} />
-        <Sidebar bind:isOpen={isMenuOpen} />
+        <HamburgerMenu />
+        <Sidebar />
     {/if}
 
     <main class:with-sidebar={(!isMobile && ($user || $page.url.pathname === '/'))}>
+        <Modal />
         <slot />
     </main>
     <FloatingVoiceRecorder />
@@ -105,12 +108,4 @@
     }
 </style>
 
-<svelte:head>
-    {#if isMenuOpen}
-        <style>
-            body {
-                overflow: hidden;
-            }
-        </style>
-    {/if}
-</svelte:head>
+

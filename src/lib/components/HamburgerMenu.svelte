@@ -1,11 +1,13 @@
 <script lang="ts">
-    export let isOpen: boolean;
+    import { isSidebarOpen } from '$lib/stores/sidebar';
+    let isOpen: boolean;
+    isSidebarOpen.subscribe(value => isOpen = value);
 </script>
 
 <button 
     class="hamburger" 
     class:open={isOpen} 
-    on:click={() => isOpen = !isOpen}
+    on:click={() => isSidebarOpen.update(v => !v)}
     aria-label={isOpen ? "Close menu" : "Open menu"}
     aria-expanded={isOpen}
 >

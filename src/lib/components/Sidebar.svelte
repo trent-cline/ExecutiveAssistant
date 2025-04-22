@@ -3,8 +3,18 @@
     import { page } from '$app/stores';
     import { supabase } from '$lib/supabase';
     import { slide, fade } from 'svelte/transition';
-    
-    export let isOpen = false;
+    import { afterNavigate } from '$app/navigation';
+    import { isSidebarOpen } from '$lib/stores/sidebar';
+    import { onDestroy } from 'svelte';
+
+    let isOpen: boolean;
+    const unsubscribe = isSidebarOpen.subscribe(value => isOpen = value);
+
+    afterNavigate(() => {
+        isSidebarOpen.set(false);
+    });
+
+    onDestroy(unsubscribe);
     
     let isMobile = true; // Default to mobile
     
@@ -21,6 +31,10 @@
     // Initialize mobile check on mount
     if (typeof window !== 'undefined') {
         checkMobile();
+        // Auto-close sidebar on route change (coding standard)
+        afterNavigate(() => {
+            isOpen = false;
+        });
     }
 </script>
 
@@ -34,8 +48,8 @@
 {#if isMobile && isOpen}
     <div 
         class="overlay" 
-        on:click={() => isOpen = false}
-        on:keydown={(e) => e.key === 'Escape' && (isOpen = false)}
+        on:click={() => isSidebarOpen.set(false)}
+        on:keydown={(e) => e.key === 'Escape' && isSidebarOpen.set(false)}
         role="button"
         tabindex="0"
         aria-label="Close sidebar overlay"
@@ -57,7 +71,7 @@
         {#if isMobile}
             <button 
                 class="close-btn" 
-                on:click={() => isOpen = false}
+                on:click={() => isSidebarOpen.set(false)}
                 aria-label="Close sidebar"
             >
                 <i class="fas fa-times" aria-hidden="true"></i>
@@ -85,14 +99,6 @@
                 Brain Inbox
             </a>
 
-            <a 
-                href="/private-notes" 
-                class:active={$page.url.pathname === '/private-notes'} 
-                on:click={() => isMobile && (isOpen = false)}
-            >
-                <i class="fas fa-envelope" aria-hidden="true"></i>
-                Private Notes
-            </a>
 
             <a 
                 href="/prm" 

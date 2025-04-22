@@ -61,7 +61,7 @@
     ];
 
     const config = {
-        tableName: 'brain_dump_database',
+        tableName: 'brain_dump',
         columns,
         features: {
             search: true,

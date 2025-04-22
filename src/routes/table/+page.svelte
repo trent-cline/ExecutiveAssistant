@@ -19,11 +19,11 @@
             Goals
         </a>
         <a 
-            href="/shopping" 
+            href="/private-notes" 
             class="btn-nav"
         >
-            <i class="fas fa-shopping-cart mr-2" aria-hidden="true"></i>
-            Shopping List
+            <i class="fas fa-user-lock mr-2" aria-hidden="true"></i>
+            Private Notes
         </a>
         <a 
             href="/dlltw" 

@@ -209,7 +209,7 @@
                 status = 'Saving note...';
                 
                 if ($user) {
-                    // For authenticated users, save to private_notes and brain_dump_database
+                    // For authenticated users, save to private_notes and brain_dump
                     const { error: privateNoteError } = await supabase
                         .from('private_notes')
                         .insert([
@@ -223,9 +223,9 @@
 
                     if (privateNoteError) throw privateNoteError;
 
-                    // Also save to brain_dump_database with full analysis
+                    // Also save to brain_dump with full analysis
                     const { error: brainDumpError } = await supabase
-                        .from('brain_dump_database')
+                        .from('brain_dump')
                         .insert([
                             {
                                 name: data.text,

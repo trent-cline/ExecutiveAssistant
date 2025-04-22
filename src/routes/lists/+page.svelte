@@ -3,22 +3,11 @@
     import { supabase } from '$lib/supabase';
     import { user } from '$lib/auth';
     import { goto } from '$app/navigation';
-    import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
-    import type { Column } from '$lib/components/DatabaseTable/types';
+    import ListsTable from '$lib/components/lists/ListsTable.svelte';
+    import ListsSkeletonLoader from '$lib/components/lists/ListsSkeletonLoader.svelte';
+    import type { ListItem } from '$lib/types/lists';
     import AuthGuard from '$lib/components/AuthGuard.svelte';
 
-    // Generic list item interface
-    interface ListItem {
-        id: string;
-        created_at: string;
-        name: string;
-        status: string;
-        priority: string;
-        checked?: boolean;
-        original_note_id?: string;
-        user_id: string;
-        [key: string]: any; // For additional properties specific to list types
-    }
 
     // List type definitions
     type ListType = 'shopping' | 'concert' | 'restaurant' | 'project';
@@ -363,10 +352,7 @@
         {/if}
 
         {#if loading}
-            <div class="loading-container">
-                <div class="loading-spinner"></div>
-                <p>Loading {activeListType} list...</p>
-            </div>
+            <ListsSkeletonLoader rows={8} />
         {:else}
             <div class="content">
                 <div class="list-header">
@@ -396,14 +382,14 @@
                               activeListType === 'restaurant' ? 'Restaurant' : 'Project'}
                     </button>
                 </div>
-                
-                <DatabaseTable 
-                    config={currentConfig} 
-                    {supabase} 
-                    initialData={items} 
-                    onRefresh={loadItems}
+                <ListsTable 
+                    items={items}
+                    loading={loading}
+                    error={error}
+                    onEdit={(e) => {/* TODO: Implement edit modal for lists */}}
+                    onDelete={(e) => {/* TODO: Implement delete logic for lists */}}
+                    onCheck={(e) => {/* TODO: Implement check/uncheck logic for lists */}}
                 />
-                
                 {#if items.length === 0}
                     <div class="empty-state">
                         <p>No items in your {activeListType} list yet.</p>
@@ -418,18 +404,31 @@
 <style>
     .container {
         max-width: 1400px;
-        margin: 0 auto;
-        padding: 2rem;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 40px 0 rgb(56 189 248 / 0.10), 0 2px 4px -1px rgb(129 140 248 / 0.15);
+        background: linear-gradient(135deg, #eff6ff 0%, #fff 60%, #c7d2fe 100%);
     }
 
     .header {
         margin-bottom: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
     }
 
     h1 {
         font-size: 2rem;
-        font-weight: bold;
-        color: var(--color-text-primary);
+        font-weight: 700;
+        color: #1e293b;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.25rem;
     }
 
     .error-message {
@@ -442,10 +441,11 @@
     }
 
     .content {
-        background: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-        padding: 1.5rem;
+        background: #fff;
+        border-radius: 1.5rem;
+        box-shadow: 0 6px 32px 0 rgb(59 130 246 / 0.08), 0 1.5px 4px -1px rgb(99 102 241 / 0.10);
+        padding: 2rem 1.25rem;
+        margin-bottom: 2rem;
     }
     
     .list-type-tabs {
@@ -453,17 +453,22 @@
         flex-wrap: wrap;
         gap: 0.5rem;
         margin-bottom: 1.5rem;
+        background: #f1f5f9;
+        border-radius: 0.75rem;
+        padding: 0.5rem 0.25rem;
     }
     
     .tab-button {
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        font-weight: 500;
-        background-color: #f3f4f6;
-        color: #4b5563;
-        transition: all 0.2s ease;
+        padding: 0.5rem 1.25rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        background: #e0e7ff;
+        color: #3730a3;
+        transition: background 0.2s, color 0.2s;
         display: flex;
         align-items: center;
+        border: none;
+        font-size: 1rem;
     }
     
     .tab-button:hover {
@@ -471,8 +476,9 @@
     }
     
     .tab-button.active {
-        background-color: #3b82f6;
-        color: white;
+        background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+        color: #fff;
+        box-shadow: 0 2px 8px 0 rgb(59 130 246 / 0.15);
     }
     
     .list-header {
@@ -491,16 +497,20 @@
     .add-button {
         display: flex;
         align-items: center;
-        padding: 0.5rem 1rem;
-        background-color: #10b981;
-        color: white;
-        border-radius: 0.375rem;
-        font-weight: 500;
-        transition: background-color 0.2s ease;
+        padding: 0.5rem 1.25rem;
+        background: linear-gradient(90deg, #10b981 0%, #3b82f6 100%);
+        color: #fff;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        font-size: 1rem;
+        border: none;
+        box-shadow: 0 1px 4px 0 rgb(16 185 129 / 0.10);
+        transition: background 0.2s, color 0.2s;
     }
     
     .add-button:hover {
-        background-color: #059669;
+        background: linear-gradient(90deg, #059669 0%, #2563eb 100%);
+        color: #e0e7ff;
     }
     
     .loading-container {

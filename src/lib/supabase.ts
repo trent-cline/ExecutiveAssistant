@@ -94,7 +94,7 @@ export async function addNoteToSupabase(note: BrainDump) {
 
         // Test Supabase connection
         const { data: testData, error: testError } = await supabase
-            .from('brain_dump_database')
+            .from('brain_dump')
             .select('count')
             .limit(1);
 
@@ -107,7 +107,7 @@ export async function addNoteToSupabase(note: BrainDump) {
 
         // Perform the insert
         const { data, error } = await supabase
-            .from('brain_dump_database')
+            .from('brain_dump')
             .insert([insertData])
             .select()
             .single();
@@ -167,7 +167,7 @@ export async function addNoteToSupabase(note: BrainDump) {
 export async function deleteNoteFromSupabase(noteId: string) {
     try {
         const { error } = await supabase
-            .from('brain_dump_database')
+            .from('brain_dump')
             .delete()
             .eq('id', noteId);
 

@@ -73,10 +73,10 @@
                 else if (lowerStatus.includes('done') || lowerStatus.includes('complete')) noteStatus = 'Done';
             }
 
-            // Save to brain_dump_database with analysis results
+            // Save to brain_dump with analysis results
             const localId = crypto.randomUUID();
             const { error: brainDumpError } = await supabase
-                .from('brain_dump_database')
+                .from('brain_dump')
                 .insert([
                     {
                         name: data.text,

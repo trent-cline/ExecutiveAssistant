@@ -1,8 +1,10 @@
 <script lang="ts">
     import { fade } from 'svelte/transition';
     import Card from '../containers/Card.svelte';
+    import SkeletonLoader from '../brain-inbox/SkeletonLoader.svelte';
 
     export let items = [];
+    export let loading = false;
 </script>
 
 <div class="shopping-list" transition:fade>
@@ -12,26 +14,30 @@
     </header>
 
     <div class="items-container">
-        {#each items as item}
-            <Card>
-                <div class="item-row">
-                    <div class="flex items-center">
-                        <input 
-                            type="checkbox" 
-                            checked={item.completed} 
-                            class="checkbox"
-                        />
-                        <span class="ml-3 text-lg {item.completed ? 'line-through text-gray-400' : ''}">{item.name}</span>
+        {#if loading || !items || items.length === 0}
+            <SkeletonLoader rows={4} />
+        {:else}
+            {#each items as item}
+                <Card>
+                    <div class="item-row">
+                        <div class="flex items-center">
+                            <input 
+                                type="checkbox" 
+                                checked={item.completed} 
+                                class="checkbox"
+                            />
+                            <span class="ml-3 text-lg {item.completed ? 'line-through text-gray-400' : ''}">{item.name}</span>
+                        </div>
+                        {#if item.quantity}
+                            <div class="text-sm text-gray-500">Quantity: {item.quantity}</div>
+                        {/if}
+                        {#if item.notes}
+                            <div class="text-sm text-gray-600 mt-2">{item.notes}</div>
+                        {/if}
                     </div>
-                    {#if item.quantity}
-                        <div class="text-sm text-gray-500">Quantity: {item.quantity}</div>
-                    {/if}
-                    {#if item.notes}
-                        <div class="text-sm text-gray-600 mt-2">{item.notes}</div>
-                    {/if}
-                </div>
-            </Card>
-        {/each}
+                </Card>
+            {/each}
+        {/if}
     </div>
 </div>
 

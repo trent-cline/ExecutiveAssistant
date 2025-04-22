@@ -38,6 +38,15 @@
                 </button>
             </header>
 
+            {#if loading}
+                <div class="skeleton-loader-modal">
+                    <div class="skeleton-header"></div>
+                    <div class="skeleton-field"></div>
+                    <div class="skeleton-field"></div>
+                    <div class="skeleton-field"></div>
+                    <div class="skeleton-footer"></div>
+                </div>
+            {:else}
             <form
                 method="POST"
                 action="?/updateNote"
@@ -138,6 +147,7 @@
                     </button>
                 </footer>
             </form>
+            {/if} 
         </div>
     </div>
 {/if}
@@ -174,4 +184,41 @@
     .alert {
         @apply p-4 mx-4 mb-4 rounded-container-token;
     }
+.skeleton-loader-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 2rem 1.5rem;
+    align-items: stretch;
+}
+.skeleton-header {
+    height: 2rem;
+    width: 60%;
+    border-radius: 0.5rem;
+    background: linear-gradient(90deg, #e0e7ef 25%, #f3f4f6 50%, #e0e7ef 75%);
+    animation: skeleton-shimmer 1.2s infinite linear;
+}
+.skeleton-field {
+    height: 1.5rem;
+    width: 100%;
+    border-radius: 0.375rem;
+    background: linear-gradient(90deg, #e0e7ef 25%, #f3f4f6 50%, #e0e7ef 75%);
+    animation: skeleton-shimmer 1.2s infinite linear;
+}
+.skeleton-footer {
+    height: 2.5rem;
+    width: 40%;
+    border-radius: 0.5rem;
+    background: linear-gradient(90deg, #e0e7ef 25%, #f3f4f6 50%, #e0e7ef 75%);
+    animation: skeleton-shimmer 1.2s infinite linear;
+    align-self: flex-end;
+}
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: 200px 0;
+    }
+}
 </style>
