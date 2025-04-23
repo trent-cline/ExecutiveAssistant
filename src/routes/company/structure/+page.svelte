@@ -209,7 +209,7 @@
         <div class="flex justify-between items-center">
             <div>
                 <h1 class="text-3xl font-bold mb-4">Company Structure</h1>
-                <p class="text-gray-600">Interactive visualization of the company structure and relationships</p>
+                <p class="text-[var(--text-2)]">Interactive visualization of the company structure and relationships</p>
             </div>
             <button
                 class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
@@ -223,9 +223,9 @@
         </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+    <div class="rounded-lg shadow-lg p-6 mb-8 bg-[var(--card-bg)] text-[var(--text-1)]">
         <div class="flex items-center mb-4">
-            <h2 class="text-xl font-semibold">Structure Chart</h2>
+            <h2 class="text-xl font-semibold text-[var(--text-1)]">Structure Chart</h2>
         </div>
         {#if loading}
             <div class="flex justify-center items-center h-96">
@@ -257,13 +257,13 @@
                 <p>Press Delete to remove a selected line</p>
             </div>
         {:else}
-            <div class="text-gray-500 p-4 text-center">
+            <div class="p-4 text-center text-[var(--text-2)]">
                 No structure data available
             </div>
         {/if}
     </div>
 
-    <div class="bg-white rounded-lg shadow-lg p-6">
+    <div class="rounded-lg shadow-lg p-6 bg-[var(--card-bg)] text-[var(--text-1)]">
         <h2 class="text-xl font-semibold mb-4">Legend</h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="legend-item company">

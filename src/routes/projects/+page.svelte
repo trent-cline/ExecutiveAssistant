@@ -1,191 +1,34 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { supabase } from '$lib/supabase';
+    import ProjectsDashboard from '$lib/components/ProjectsDashboard.svelte';
+    import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
+    import NewProjectModal from './NewProjectModal.svelte';
     import { user } from '$lib/auth';
     import { goto } from '$app/navigation';
-    import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
-    import type { Column } from '$lib/components/DatabaseTable/types';
-    import NewProjectModal from './NewProjectModal.svelte';
-    import ProjectMilestones from './ProjectMilestones.svelte';
-
-    interface Project {
-        id: string;
-        company_name: string;
-        partner_name: string;
-        industry: string;
-        ownership: number;
-        development_revenue: string;
-        additional_revenue: string;
-        exclusivity: string;
-        status: string;
-        website: string;
-        description?: string;
-        impact_statement?: string;
-        target_audience?: string;
-    }
-
-    let activeProjects: Project[] = [];
-    let mentorToLaunchProjects: Project[] = [];
-    let proBonoProjects: Project[] = [];
-    let loading = true;
-    let error = '';
+    import { supabase } from '$lib/supabase';
+    import { onMount } from 'svelte';
     let showNewProjectModal = false;
+    let loading = false;
+    let error = null;
+    let activeProjects = [];
+    let mentorToLaunchProjects = [];
+    let proBonoProjects = [];
     let selectedProjectType: 'active' | 'mentor' | 'probono' = 'active';
-
+    // Define project types for section rendering and selection
     const projectTypes = [
-        { id: 'active', label: 'Active Projects', description: 'Web-based app development projects' },
-        { id: 'mentor', label: 'Mentor To Launch', description: 'Small trades business launch projects' },
-        { id: 'probono', label: 'Pro Bono', description: 'Non-profit and social impact projects' }
-    ];
-
-    const activeColumns: Column[] = [
         {
-            id: 'company_name',
-            label: 'Company',
-            width: '200px',
-            sortable: true,
-            template: (value, row) => row && row.id ? `
-                <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
-            ` : value || ''
+            id: 'active',
+            label: 'Active Projects',
+            description: 'All currently active projects.'
         },
         {
-            id: 'partner_name',
-            label: 'Partner',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
+            id: 'mentor',
+            label: 'Mentor To Launch',
+            description: 'Projects in the mentor-to-launch pipeline.'
         },
         {
-            id: 'industry',
-            label: 'Industry',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
-        },
-        {
-            id: 'ownership',
-            label: 'Ownership %',
-            width: '120px',
-            sortable: true,
-            template: (value) => value ? `${value}%` : ''
-        },
-        {
-            id: 'development_revenue',
-            label: 'Dev Revenue',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
-        },
-        {
-            id: 'website',
-            label: 'Website',
-            width: '100px',
-            template: (value) => value ? `
-                <button class="website-button" onclick="window.open('${value}', '_blank')">
-                    <i class="fas fa-arrow-up-right-from-square"></i>
-                </button>
-            ` : '<span class="no-website">-</span>'
-        },
-        {
-            id: 'milestones',
-            label: 'Milestones',
-            width: '150px',
-            template: (value, row) => `
-                <ProjectMilestones 
-                    milestones={{
-                        industry_identified: row.industry_identified || false,
-                        partner_ided: row.partner_ided || false,
-                        prototype_created: row.prototype_created || false,
-                        deal_signed: row.deal_signed || false
-                    }}
-                    on:change={async (e) => {
-                        try {
-                            const { error } = await supabase
-                                .from('active_projects')
-                                .update({
-                                    industry_identified: e.detail.milestones.industry_identified,
-                                    partner_ided: e.detail.milestones.partner_ided,
-                                    prototype_created: e.detail.milestones.prototype_created,
-                                    deal_signed: e.detail.milestones.deal_signed
-                                })
-                                .eq('id', row.id);
-                            
-                            if (error) throw error;
-                        } catch (err) {
-                            console.error('Error updating project milestones:', err);
-                        }
-                    }}
-                />
-            `
-        },
-        {
-            id: 'actions',
-            label: 'Actions',
-            width: '100px',
-            template: (_, row) => `
-                <div class="action-buttons">
-                    <button onclick="window.moveProject('${row.id}')" class="move-button">
-                        <i class="fas fa-exchange-alt"></i> Move
-                    </button>
-                </div>
-            `
-        }
-    ];
-
-    const mentorColumns: Column[] = [
-        { 
-            id: 'company_name',
-            label: 'Company',
-            width: '200px',
-            sortable: true,
-            template: (value, row) => row && row.id ? `
-                <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
-            ` : value || ''
-        },
-        { 
-            id: 'partner_name',
-            label: 'Partner',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
-        },
-        { 
-            id: 'industry',
-            label: 'Industry',
-            width: '150px',
-            sortable: true,
-            template: (value) => value || ''
-        },
-        {
-            id: 'website',
-            label: 'Website',
-            width: '150px',
-            template: (value) => value ? `
-                <a href="${value}" target="_blank" rel="noopener noreferrer" class="website-link">
-                    <i class="fas fa-arrow-up-right-from-square"></i>
-                </a>
-            ` : '<span class="no-website">-</span>'
-        },
-        {
-            id: 'status',
-            label: 'Status',
-            width: '120px',
-            template: (value) => `<span class="status status-${value.toLowerCase()}">${value}</span>`
-        },
-        {
-            id: 'actions',
-            label: 'Actions',
-            width: '150px',
-            template: (_, row) => `
-                <div class="actions">
-                    <a href="/projects/${row.id}" class="view-link">
-                        <i class="fas fa-eye"></i>
-                    </a>
-                    <button class="move-btn" data-id="${row.id}">
-                        <i class="fas fa-arrows-alt"></i>
-                    </button>
-                </div>
-            `
+            id: 'probono',
+            label: 'Pro Bono',
+            description: 'Pro bono and social impact projects.'
         }
     ];
 
@@ -270,7 +113,28 @@
                 handler: (row) => handleProjectDelete(row.id, 'active')
             }
         ]
-    };
+        }
+
+    async function handleProjectDelete(projectId: string, type: 'active' | 'mentor' | 'probono') {
+        let tableName = '';
+        if (type === 'active') tableName = 'active_projects';
+        else if (type === 'mentor') tableName = 'mentor_to_launch_projects';
+        else if (type === 'probono') tableName = 'pro_bono_projects';
+        try {
+            loading = true;
+            const { error: deleteError } = await supabase
+                .from(tableName)
+                .delete()
+                .eq('id', projectId);
+            if (deleteError) throw deleteError;
+            await loadProjects();
+        } catch (err) {
+            console.error('Error deleting project:', err);
+            error = err.message;
+        } finally {
+            loading = false;
+        }
+    }
 
     const mentorToLaunchConfig = {
         tableName: 'mentor_to_launch_projects',

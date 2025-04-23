@@ -74,7 +74,8 @@
   }
 </script>
 
-<div class="w-full max-w-6xl mx-auto mt-8 p-4 md:p-8 bg-gradient-to-br from-blue-50 via-white to-indigo-50 rounded-3xl shadow-2xl">
+<div class="brain-table-outer">
+
   {#if error}
     <div class="bg-red-100 border border-red-300 text-red-700 rounded p-4 my-4 flex flex-col items-start">
       <p class="mb-2">{error}</p>
@@ -87,8 +88,9 @@
   {#if loading}
     <SkeletonLoader rows={5} />
   {:else}
-    <div class="overflow-x-auto">
-      <table class="min-w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <style src="./BrainInboxTable.mobile.css"></style>
+    <div class="overflow-hidden">
+      <table class="min-w-full bg-white rounded-2xl shadow-xl">
         <thead>
           <tr class="bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-400">
             <th class="px-6 py-4"></th>

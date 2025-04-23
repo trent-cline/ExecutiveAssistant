@@ -42,16 +42,10 @@
                     componentData = { goals: data || [] };
                     break;
                 }
-                // Projects page has been removed, redirecting to company page
+                // Projects page has been removed; show message or redirect
                 case 'projects': {
-                    const { data, error: err } = await supabase
-                        .from('active_projects')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-                    
-                    if (err) throw err;
-                    componentData = { projects: data || [] };
-                    // Note: Projects are now shown on the company page
+                    error = 'Projects are now shown on the Company page.';
+                    componentData = null;
                     break;
                 }
                 case 'shopping': {
@@ -117,9 +111,8 @@
             switch (name) {
                 // Projects page has been removed, redirecting to company page
                 case 'projects': {
-                    // Redirect to company dashboard instead since projects are now there
-                    const module = await import('../company/CompanyDashboard.svelte');
-                    return module.default;
+                    // Projects page has been removed; show message instead of importing
+                    throw new Error('Projects are now shown on the Company page.');
                 }
                 case 'shopping': {
                     const module = await import('../shopping/ShoppingList.svelte');
@@ -138,8 +131,8 @@
                     return module.default;
                 }
                 case 'company': {
-                    const module = await import('../company/CompanyDashboard.svelte');
-                    return module.default;
+                    // CompanyDashboard has been removed; show message
+                    throw new Error('Company dashboard is now handled elsewhere.');
                 }
                 case 'goals': {
                     const module = await import('../goals/GoalInsights.svelte');

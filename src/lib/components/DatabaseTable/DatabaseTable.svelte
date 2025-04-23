@@ -674,38 +674,80 @@
 
 <style>
     .database-table {
-        width: 100%;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(-1 * (env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * (env(safe-area-inset-right, 0px)));
+    background: white;
+    border-radius: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    padding: 0;
+}
 
-    .table-container {
-        overflow: hidden;
-        border-radius: 8px;
-    }
+.table-container {
+    overflow: hidden;
+    border-radius: 0;
+    padding: 0;
+}
 
-    .table-wrapper {
-        overflow-x: auto;
-        position: relative;
-        -webkit-overflow-scrolling: touch;
-        max-width: 100vw;
-    }
+.table-wrapper {
+    overflow-x: auto;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100vw;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+}
 
+table {
+    width: 100vw;
+    min-width: 600px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.95rem;
+    background: white;
+}
+
+td, th {
+    padding: 1rem 0.5rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+.action-buttons button, .action-cell button {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.2em;
+    margin: 0 0.25rem;
+    border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+    .database-table,
+    .table-container,
+    .table-wrapper,
     table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        font-size: 0.875rem;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-
-    td, th {
-        padding: 0.75rem 0.5rem;
-        vertical-align: top;
-        border-bottom: 1px solid #e2e8f0;
-        white-space: normal;
-        word-wrap: break-word;
+    th, td {
+        padding: 0.75rem 0.25rem;
+        font-size: 1rem;
     }
+    .action-buttons button, .action-cell button {
+        min-width: 44px;
+        min-height: 44px;
+        font-size: 1.25em;
+        margin: 0 0.15rem;
+        border-radius: 8px;
+    }
+}
 
     @media (max-width: 768px) {
         table {
@@ -881,44 +923,36 @@
         white-space: nowrap;
     }
 
-    @media (min-width: 640px) {
-        table {
-            font-size: 1rem;
-        }
-
-        td {
-            padding: 0.75rem 1rem;
-        }
-
-        .action-cell {
-            width: 150px;
-        }
-
-        .action-buttons {
-            gap: 0.5rem;
-        }
-
-        .action-button {
-            padding: 0.5rem;
-        }
-
-        .pagination {
-            gap: 0.5rem;
-            padding: 1rem;
-        }
-
-        .page-info {
-            font-size: 0.875rem;
-        }
-
-        .toolbar-actions {
-            gap: 0.5rem;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-        }
+@media (min-width: 640px) {
+    table {
+        font-size: 1rem;
     }
+    td {
+        padding: 0.75rem 1rem;
+    }
+    .action-cell {
+        width: 150px;
+    }
+    .action-buttons {
+        gap: 0.5rem;
+    }
+    .action-button {
+        padding: 0.5rem;
+    }
+    .pagination {
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+    .page-info {
+        font-size: 0.875rem;
+    }
+    .toolbar-actions {
+        gap: 0.5rem;
+    }
+    .btn {
+        padding: 0.5rem 1rem;
+    }
+}
 
     @media (max-width: 639px) {
         .hide-on-mobile {

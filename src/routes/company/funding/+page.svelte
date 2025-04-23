@@ -168,7 +168,7 @@
 <div class="container mx-auto px-4 py-8">
     <div class="mb-8">
         <h1 class="text-3xl font-bold mb-2">Funding Management</h1>
-        <p class="text-gray-600 dark:text-gray-300">Track and manage funding opportunities and investments</p>
+        <p class="text-[var(--text-2)]">Track and manage funding opportunities and investments</p>
     </div>
 
     {#if errorMessage}
@@ -177,7 +177,7 @@
         </div>
     {/if}
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+    <div class="rounded-lg shadow-lg p-6 bg-[var(--card-bg)] text-[var(--text-1)]">
         {#if loading}
             <div class="flex justify-center items-center h-48">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -226,7 +226,7 @@
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody class="divide-y rounded-lg bg-[var(--surface-1)] text-[var(--text-1)]">
                         {#each fundingSources as source}
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">

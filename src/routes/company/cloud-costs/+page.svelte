@@ -206,10 +206,10 @@
         <div class="flex flex-col lg:flex-row gap-8">
             <!-- Main Calculator Section -->
             <div class="w-full lg:w-2/3">
-                <div class="bg-white rounded-2xl shadow-xl p-6">
+                <div class="rounded-2xl shadow-xl p-6 bg-[var(--card-bg)] text-[var(--text-1)]">
                     <form>
                         <!-- Input Section -->
-                        <div class="bg-white rounded-2xl shadow-xl p-6">
+                        <div class="rounded-2xl shadow-xl p-6 bg-[var(--card-bg)] text-[var(--text-1)]">
                             <h2 class="text-xl font-semibold text-gray-900 mb-6">Infrastructure Configuration</h2>
                             
                             <!-- Fleet Size -->
@@ -290,7 +290,7 @@
                                                 <i class="fas fa-info-circle text-gray-400 ml-2" data-tippy-content={tooltips.aurora}></i>
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <span class="px-3 py-1 bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900 font-medium group-hover:border-indigo-300 transition-colors">
+                                                <span class="px-3 py-1 rounded-lg border shadow-sm font-medium group-hover:border-indigo-300 transition-colors bg-[var(--surface-2)] text-[var(--text-1)] border-[var(--border-color)]">
                                                     {formatCurrency(auroraMonthlyCost)}
                                                 </span>
                                                 <span class="text-xs text-gray-500">/mo</span>
@@ -304,7 +304,7 @@
                                                 <i class="fas fa-info-circle text-gray-400 ml-2" data-tippy-content={tooltips.kinesis}></i>
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <span class="px-3 py-1 bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900 font-medium group-hover:border-indigo-300 transition-colors">
+                                                <span class="px-3 py-1 rounded-lg border shadow-sm font-medium group-hover:border-indigo-300 transition-colors bg-[var(--surface-2)] text-[var(--text-1)] border-[var(--border-color)]">
                                                     {formatCurrency(kinesisMonthlyCost)}
                                                 </span>
                                                 <span class="text-xs text-gray-500">/mo</span>
@@ -319,7 +319,7 @@
                                                 <i class="fas fa-info-circle text-gray-400 ml-2" data-tippy-content={tooltips.lambda}></i>
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <span class="px-3 py-1 bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900 font-medium group-hover:border-indigo-300 transition-colors">
+                                                <span class="px-3 py-1 rounded-lg border shadow-sm font-medium group-hover:border-indigo-300 transition-colors bg-[var(--surface-2)] text-[var(--text-1)] border-[var(--border-color)]">
                                                     {formatCurrency(lambdaMonthlyCost)}
                                                 </span>
                                                 <span class="text-xs text-gray-500">/mo</span>
@@ -333,7 +333,7 @@
                                                 <i class="fas fa-info-circle text-gray-400 ml-2" data-tippy-content={tooltips.redshift}></i>
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <span class="px-3 py-1 bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900 font-medium group-hover:border-indigo-300 transition-colors">
+                                                <span class="px-3 py-1 rounded-lg border shadow-sm font-medium group-hover:border-indigo-300 transition-colors bg-[var(--surface-2)] text-[var(--text-1)] border-[var(--border-color)]">
                                                     {formatCurrency(redshiftMonthlyCost)}
                                                 </span>
                                                 <span class="text-xs text-gray-500">/mo</span>
@@ -347,7 +347,7 @@
                                                 <i class="fas fa-info-circle text-gray-400 ml-2" data-tippy-content={tooltips.biTool}></i>
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <span class="px-3 py-1 bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900 font-medium group-hover:border-indigo-300 transition-colors">
+                                                <span class="px-3 py-1 rounded-lg border shadow-sm font-medium group-hover:border-indigo-300 transition-colors bg-[var(--surface-2)] text-[var(--text-1)] border-[var(--border-color)]">
                                                     {formatCurrency(biMonthlyCost)}
                                                 </span>
                                                 <span class="text-xs text-gray-500">/mo</span>
@@ -361,7 +361,7 @@
                                                 <i class="fas fa-info-circle text-gray-400 ml-2" data-tippy-content={tooltips.iotDevices}></i>
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <span class="px-3 py-1 bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900 font-medium group-hover:border-indigo-300 transition-colors">
+                                                <span class="px-3 py-1 rounded-lg border shadow-sm font-medium group-hover:border-indigo-300 transition-colors bg-[var(--surface-2)] text-[var(--text-1)] border-[var(--border-color)]">
                                                     {formatCurrency(iotMonthlyCost)}
                                                 </span>
                                                 <span class="text-xs text-gray-500">/mo</span>
@@ -374,14 +374,14 @@
                                         <div class="bg-white rounded-lg p-4 shadow-sm">
                                             <div class="flex items-center justify-between">
                                                 <div>
-                                                    <div class="text-sm text-gray-600">Monthly Cost</div>
+                                                    <div class="text-sm text-[var(--text-2)]">Monthly Cost</div>
                                                     <div class="text-xs text-gray-500">Before margin</div>
                                                 </div>
                                                 <div class="text-right">
                                                     <div class="px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 text-xl font-semibold text-gray-900">
                                                         {formatCurrency(totalMonthlyCost)}
                                                     </div>
-                                                    <div class="text-sm text-gray-500 mt-1">per month</div>
+                                                    <div class="text-sm mt-1 text-[var(--text-2)]">per month</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -389,7 +389,7 @@
                                         <div class="bg-white rounded-lg p-4 shadow-sm">
                                             <div class="flex items-center justify-between">
                                                 <div>
-                                                    <div class="text-sm text-gray-600">Per-Truck Cost</div>
+                                                    <div class="text-sm text-[var(--text-2)]">Per-Truck Cost</div>
                                                     <div class="text-xs text-gray-500">Base cost</div>
                                                 </div>
                                                 <div class="text-right">
@@ -402,7 +402,7 @@
                                         <div class="bg-white rounded-lg p-4 shadow-sm">
                                             <div class="flex items-center justify-between">
                                                 <div>
-                                                    <div class="text-sm text-gray-600">Per-Truck with Margin</div>
+                                                    <div class="text-sm text-[var(--text-2)]">Per-Truck with Margin</div>
                                                     <div class="text-xs text-gray-500">Including {formatPercent(profitMarginPercent)} margin</div>
                                                 </div>
                                                 <div class="text-right">
@@ -436,10 +436,10 @@
 
             <!-- Formula Documentation Section -->
             <div class="w-full lg:w-1/3">
-                <div class="bg-white rounded-2xl shadow-xl p-6 space-y-6 sticky top-8">
+                <div class="rounded-2xl shadow-xl p-6 space-y-6 sticky top-8 bg-[var(--card-bg)] text-[var(--text-1)]">
                     <div class="border-b border-gray-200 pb-4">
-                        <h2 class="text-xl font-semibold text-gray-900">Formula Documentation</h2>
-                        <p class="text-sm text-gray-500 mt-1">Detailed breakdown of calculations</p>
+                        <h2 class="text-xl font-semibold text-[var(--text-1)]">Formula Documentation</h2>
+                        <p class="text-sm mt-1 text-[var(--text-2)]">Detailed breakdown of calculations</p>
                     </div>
 
                     <div class="space-y-6">
@@ -451,7 +451,7 @@
                                 <p><strong>High Load:</strong> ${AURORA_INSTANCE_COST_HIGH}/month</p>
                                 <p><strong>Storage:</strong> ${AURORA_STORAGE_COST_PER_GB}/GB/month</p>
                                 <p><strong>Backup:</strong> ${AURORA_BACKUP_COST_PER_GB}/GB/month</p>
-                                <div class="bg-gray-50 p-3 rounded-lg mt-2">
+                                <div class="p-3 rounded-lg mt-2 bg-[var(--surface-1)]">
                                     <p class="font-mono text-xs">Monthly Cost = Instance Cost + (Storage GB × ${AURORA_STORAGE_COST_PER_GB}) + (Backup GB × ${AURORA_BACKUP_COST_PER_GB})</p>
                                 </div>
                             </div>
@@ -462,7 +462,7 @@
                             <h3 class="text-lg font-medium text-gray-900">Kinesis Data Ingestion</h3>
                             <div class="mt-2 space-y-2 text-sm text-gray-600">
                                 <p><strong>Base Rate:</strong> ${KINESIS_INGEST_COST_PER_GB}/GB</p>
-                                <div class="bg-gray-50 p-3 rounded-lg mt-2">
+                                <div class="p-3 rounded-lg mt-2 bg-[var(--surface-1)]">
                                     <p class="font-mono text-xs">Daily GB = (MB per Truck × Trucks) ÷ 1024</p>
                                     <p class="font-mono text-xs">Monthly GB = Daily GB × 30</p>
                                     <p class="font-mono text-xs">Cost = Monthly GB × ${KINESIS_INGEST_COST_PER_GB}</p>
@@ -476,7 +476,7 @@
                             <div class="mt-2 space-y-2 text-sm text-gray-600">
                                 <p><strong>Request Cost:</strong> ${LAMBDA_REQUEST_COST_PER_MILLION}/million</p>
                                 <p><strong>Duration:</strong> ${LAMBDA_DURATION_COST_PER_GB_SECOND}/GB-second</p>
-                                <div class="bg-gray-50 p-3 rounded-lg mt-2">
+                                <div class="p-3 rounded-lg mt-2 bg-[var(--surface-1)]">
                                     <p class="font-mono text-xs">Monthly Invocations = Daily Invocations × Trucks × 30</p>
                                     <p class="font-mono text-xs">Request Cost = (Invocations ÷ 1M) × ${LAMBDA_REQUEST_COST_PER_MILLION}</p>
                                     <p class="font-mono text-xs">GB-Seconds = Invocations × Memory GB × Duration</p>
@@ -496,7 +496,7 @@
                                     <li>Large: ${REDSHIFT_LARGE_CLUSTER}/month</li>
                                 </ul>
                                 <p><strong>Storage:</strong> ${REDSHIFT_STORAGE_COST_PER_TB}/TB/month</p>
-                                <div class="bg-gray-50 p-3 rounded-lg mt-2">
+                                <div class="p-3 rounded-lg mt-2 bg-[var(--surface-1)]">
                                     <p class="font-mono text-xs">Cost = Cluster Cost + (TB × ${REDSHIFT_STORAGE_COST_PER_TB})</p>
                                 </div>
                             </div>
@@ -507,7 +507,7 @@
                             <h3 class="text-lg font-medium text-gray-900">BI Tool Licensing</h3>
                             <div class="mt-2 space-y-2 text-sm text-gray-600">
                                 <p><strong>Per User:</strong> ${BI_LICENSE_COST_PER_USER}/month</p>
-                                <div class="bg-gray-50 p-3 rounded-lg mt-2">
+                                <div class="p-3 rounded-lg mt-2 bg-[var(--surface-1)]">
                                     <p class="font-mono text-xs">Cost = Users × ${BI_LICENSE_COST_PER_USER}</p>
                                 </div>
                             </div>
@@ -518,7 +518,7 @@
                             <h3 class="text-lg font-medium text-gray-900">IoT Device Management</h3>
                             <div class="mt-2 space-y-2 text-sm text-gray-600">
                                 <p><strong>Per Device:</strong> ${DEVICE_MANAGEMENT_COST_PER_DEVICE}/month</p>
-                                <div class="bg-gray-50 p-3 rounded-lg mt-2">
+                                <div class="p-3 rounded-lg mt-2 bg-[var(--surface-1)]">
                                     <p class="font-mono text-xs">Cost = Trucks × ${DEVICE_MANAGEMENT_COST_PER_DEVICE}</p>
                                 </div>
                             </div>

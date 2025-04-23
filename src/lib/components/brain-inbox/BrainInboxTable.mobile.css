@@ -1,0 +1,61 @@
+/* Mobile-first, edge-to-edge, touch-friendly table for BrainInboxTable */
+.brain-table-outer {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(-1 * (env(safe-area-inset-left, 0px)));
+  margin-right: calc(-1 * (env(safe-area-inset-right, 0px)));
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border-radius: 0;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  padding: 0;
+  overflow-x: auto;
+}
+
+.brain-table-outer table {
+  width: 100vw;
+  min-width: 600px;
+  border-radius: 0;
+  background: white;
+}
+
+.brain-table-outer th, .brain-table-outer td {
+  padding: 1rem 0.5rem;
+  font-size: 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #e2e8f0;
+  word-break: break-word;
+}
+
+.brain-table-outer .flex button, .brain-table-outer button {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.15em;
+  margin: 0 0.2rem;
+  border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .brain-table-outer {
+    padding: 0;
+    border-radius: 0;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+  }
+  .brain-table-outer table {
+    width: 100vw !important;
+    min-width: 480px;
+    border-radius: 0 !important;
+  }
+  .brain-table-outer th, .brain-table-outer td {
+    padding: 0.75rem 0.25rem;
+    font-size: 1rem;
+  }
+  .brain-table-outer .flex button, .brain-table-outer button {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.15em;
+    margin: 0 0.1rem;
+    border-radius: 8px;
+  }
+}
