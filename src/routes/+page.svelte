@@ -274,8 +274,9 @@
 
                 status = '';
             } catch (dbError) {
+                let dbErrorMessage = (dbError && typeof dbError === 'object' && 'message' in dbError) ? dbError.message : String(dbError);
                 console.error('Failed to save to database:', dbError);
-                status = `Warning: Note saved locally but not to database (${dbError.message})`;
+                status = `Warning: Note saved locally but not to database (${dbErrorMessage})`;
                 return;
             }
         } catch (error: any) {
