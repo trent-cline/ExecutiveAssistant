@@ -17,9 +17,18 @@ const toolLinks = [
   { href: '/company/gantt-chart', icon: 'fa-chart-gantt', label: 'Gantt Chart' },
 ];
 
-let activeProjects = [];
-let mentorToLaunchProjects = [];
-let proBonoProjects = [];
+interface Project {
+  id: string;
+  company_name?: string;
+  status?: string;
+  created_at?: string;
+  target_launch_date?: string;
+  milestones?: any[];
+}
+
+let activeProjects: Project[] = [];
+let mentorToLaunchProjects: Project[] = [];
+let proBonoProjects: Project[] = [];
 let loading = true;
 let error: string | null = null;
 
@@ -34,8 +43,9 @@ onMount(async () => {
     activeProjects = active || [];
     mentorToLaunchProjects = mentor || [];
     proBonoProjects = probono || [];
-  } catch (e) {
-    error = e.message || 'Failed to load projects.';
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Failed to load projects.';
+    error = errorMessage;
   } finally {
     loading = false;
   }
@@ -52,24 +62,21 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
 <div class="page-container">
     <header class="company-header">
         <h1>Pillar Apps, LLC</h1>
-        <section class="dashboard">
-            <ProjectsSummaryStats
-                totalProjects={totalProjects}
-                active={activeProjects.length}
-                mentor={mentorToLaunchProjects.length}
-                probono={proBonoProjects.length}
-            />
-        </section>
     </header>
 
-    <section class="tools-section">
-        <h2>Company Tools</h2>
-        <CompanyToolsNav {toolLinks} />
-    </section>
+    <div class="dashboard-section">
+        <ProjectsSummaryStats
+            totalProjects={totalProjects}
+            active={activeProjects.length}
+            mentor={mentorToLaunchProjects.length}
+            probono={proBonoProjects.length}
+        />
+    </div>
 
-    <section class="projects-section">
-        <h2>Projects</h2>
-        <div class="projects-tables">
+    <div class="main-content">
+        <div class="projects-section">
+            <h2>Projects</h2>
+            
             <div class="project-table">
                 <h3>Active Projects</h3>
                 {#if loading}
@@ -81,15 +88,19 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Name</th>
+                                    <th>Company</th>
                                     <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Target Launch</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {#each activeProjects as proj}
                                     <tr>
-                                        <td>{proj.name}</td>
-                                        <td>{proj.status}</td>
+                                        <td>{proj.company_name || 'Unnamed'}</td>
+                                        <td>{proj.status || 'N/A'}</td>
+                                        <td>{proj.created_at ? new Date(proj.created_at).toLocaleDateString() : 'N/A'}</td>
+                                        <td>{proj.target_launch_date ? new Date(proj.target_launch_date).toLocaleDateString() : 'N/A'}</td>
                                     </tr>
                                 {/each}
                             </tbody>
@@ -99,6 +110,7 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
                     {/if}
                 {/if}
             </div>
+            
             <div class="project-table">
                 <h3>Mentor To Launch</h3>
                 {#if loading}
@@ -110,15 +122,19 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Name</th>
+                                    <th>Company</th>
                                     <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Target Launch</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {#each mentorToLaunchProjects as proj}
                                     <tr>
-                                        <td>{proj.name}</td>
-                                        <td>{proj.status}</td>
+                                        <td>{proj.company_name || 'Unnamed'}</td>
+                                        <td>{proj.status || 'N/A'}</td>
+                                        <td>{proj.created_at ? new Date(proj.created_at).toLocaleDateString() : 'N/A'}</td>
+                                        <td>{proj.target_launch_date ? new Date(proj.target_launch_date).toLocaleDateString() : 'N/A'}</td>
                                     </tr>
                                 {/each}
                             </tbody>
@@ -128,6 +144,7 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
                     {/if}
                 {/if}
             </div>
+            
             <div class="project-table">
                 <h3>Pro Bono</h3>
                 {#if loading}
@@ -139,15 +156,19 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Name</th>
+                                    <th>Company</th>
                                     <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Target Launch</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {#each proBonoProjects as proj}
                                     <tr>
-                                        <td>{proj.name}</td>
-                                        <td>{proj.status}</td>
+                                        <td>{proj.company_name || 'Unnamed'}</td>
+                                        <td>{proj.status || 'N/A'}</td>
+                                        <td>{proj.created_at ? new Date(proj.created_at).toLocaleDateString() : 'N/A'}</td>
+                                        <td>{proj.target_launch_date ? new Date(proj.target_launch_date).toLocaleDateString() : 'N/A'}</td>
                                     </tr>
                                 {/each}
                             </tbody>
@@ -158,7 +179,12 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
                 {/if}
             </div>
         </div>
-    </section>
+        
+        <div class="tools-sidebar">
+            <h2>Company Tools</h2>
+            <CompanyToolsNav {toolLinks} />
+        </div>
+    </div>
 </div>
 
 <style>
@@ -171,102 +197,88 @@ $: totalProjects = activeProjects.length + mentorToLaunchProjects.length + proBo
 
 .company-header {
   text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-section {
   margin-bottom: 2rem;
 }
-.dashboard {
-  display: flex;
-  justify-content: center;
-  margin: 1rem 0 2rem 0;
-}
-.dashboard-card {
-  display: flex;
+
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 300px;
   gap: 2rem;
-  background: #fff;
-  border-radius: 1rem;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1.5px 4px rgba(0,0,0,0.03);
-  padding: 1.5rem 2rem;
+  align-items: start;
 }
-.dashboard-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.stat-label {
-  color: #888;
-  font-size: 0.9rem;
-}
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-.tools-section {
-  margin-bottom: 2rem;
-}
-.tools-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-}
-.tool-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #f3f4f6;
-  border-radius: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  text-decoration: none;
-  color: #222;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-.tool-link:hover {
-  background: #e5e7eb;
-}
+
 .projects-section {
-  margin-top: 2rem;
-}
-.projects-tables {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  justify-content: space-between;
-}
-.project-table {
-  background: #fff;
+  background: white;
   border-radius: 1rem;
   box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1.5px 4px rgba(0,0,0,0.03);
-  padding: 1rem 1.5rem;
-  flex: 1 1 250px;
-  min-width: 250px;
+  padding: 1.5rem;
 }
+
+.tools-sidebar {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1.5px 4px rgba(0,0,0,0.03);
+  padding: 1.5rem;
+  position: sticky;
+  top: 2rem;
+}
+
+.project-table {
+  margin-bottom: 2rem;
+}
+
 .project-table h3 {
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
 }
+
+.projects-section h2, .tools-sidebar h2 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  color: #374151;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.9rem;
 }
+
 th, td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #e5e7eb;
 }
+
+th {
+  font-weight: 600;
+  color: #6b7280;
+  background-color: #f9fafb;
+}
+
+tr:hover {
+  background-color: #f9fafb;
+}
+
 .error {
-  color: #d32f2f;
-  font-weight: bold;
-}
-@media (max-width: 900px) {
-  .projects-tables {
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-  .dashboard-card {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: center;
-  }
+  color: #ef4444;
 }
 
-
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .tools-sidebar {
+    position: static;
+    margin-top: 2rem;
+  }
+}
 </style>

@@ -10,7 +10,7 @@
 
 
     // List type definitions
-    type ListType = 'shopping' | 'concert' | 'restaurant' | 'project';
+    type ListType = 'shopping' | 'concert' | 'restaurant' | 'project' | 'steel-trap';
     
     let activeListType: ListType = 'shopping';
     let items: ListItem[] = [];
@@ -19,6 +19,48 @@
 
     // Column definitions for each list type
     const listConfigs = {
+        'steel-trap': {
+            tableName: 'steel_trap',
+            columns: [
+                {
+                    id: 'name',
+                    label: 'Idea/Thought',
+                    type: 'text',
+                    editable: true,
+                    width: '25%'
+                },
+                {
+                    id: 'summary',
+                    label: 'Description',
+                    type: 'text',
+                    editable: true,
+                    width: '35%'
+                },
+                {
+                    id: 'status',
+                    label: 'Status',
+                    type: 'select',
+                    editable: true,
+                    width: '15%',
+                    options: ['Active', 'In Progress', 'Completed', 'Archived']
+                },
+                {
+                    id: 'priority',
+                    label: 'Priority',
+                    type: 'select',
+                    editable: true,
+                    width: '15%',
+                    options: ['Low', 'Medium', 'High', 'Critical']
+                },
+                {
+                    id: 'checked',
+                    label: 'Checked',
+                    type: 'boolean',
+                    editable: true,
+                    width: '10%'
+                }
+            ]
+        },
         shopping: {
             tableName: 'shopping_list',
             columns: [
@@ -342,6 +384,13 @@
                     <i class="fas fa-tasks mr-2"></i>
                     Projects
                 </button>
+                <a 
+                    href="/steel-trap"
+                    class="tab-button steel-trap"
+                >
+                    <i class="fas fa-lightbulb mr-2"></i>
+                    Steel Trap
+                </a>
             </div>
         </div>
 
@@ -365,6 +414,8 @@
                             Restaurant List
                         {:else if activeListType === 'project'}
                             Projects List
+                        {:else if activeListType === 'steel-trap'}
+                            Steel Trap
                         {/if}
                     </h2>
                     <button class="add-button" on:click={() => {
@@ -379,7 +430,8 @@
                         <i class="fas fa-plus mr-2"></i>
                         Add {activeListType === 'shopping' ? 'Item' : 
                               activeListType === 'concert' ? 'Concert' : 
-                              activeListType === 'restaurant' ? 'Restaurant' : 'Project'}
+                              activeListType === 'restaurant' ? 'Restaurant' : 
+                              activeListType === 'project' ? 'Project' : 'Idea'}
                     </button>
                 </div>
                 <ListsTable 
