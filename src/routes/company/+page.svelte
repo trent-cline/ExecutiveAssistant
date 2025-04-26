@@ -14,6 +14,7 @@ const toolLinks = [
   { href: '/company/organization-chart', icon: 'fa-sitemap', label: 'Org Chart' },
   { href: '/company/pressure-calculator', icon: 'fa-gauge-high', label: 'Pressure Calculator' },
   { href: '/projects', icon: 'fa-table-columns', label: 'Project Dashboard' },
+  { href: '/company/gantt-chart', icon: 'fa-chart-gantt', label: 'Gantt Chart' },
 ];
 
 let activeProjects = [];

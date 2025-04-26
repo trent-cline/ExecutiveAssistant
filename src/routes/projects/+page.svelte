@@ -2,17 +2,21 @@
     import ProjectsDashboard from '$lib/components/ProjectsDashboard.svelte';
     import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
     import NewProjectModal from './NewProjectModal.svelte';
+    import ProjectModal from '$lib/components/ProjectModal.svelte';
     import { user } from '$lib/auth';
     import { goto } from '$app/navigation';
     import { supabase } from '$lib/supabase';
     import { onMount } from 'svelte';
     let showNewProjectModal = false;
-    let loading = false;
-    let error = null;
-    let activeProjects = [];
-    let mentorToLaunchProjects = [];
-    let proBonoProjects = [];
+    let showProjectModal = false;
+    let selectedProject: any = null;
     let selectedProjectType: 'active' | 'mentor' | 'probono' = 'active';
+    let selectedProjectId: string | null = null;
+    let loading = false;
+    let error: string | null = null;
+    let activeProjects: any[] = [];
+    let mentorToLaunchProjects: any[] = [];
+    let proBonoProjects: any[] = [];
     // Define project types for section rendering and selection
     const projectTypes = [
         {
@@ -40,7 +44,7 @@
                 label: 'Company',
                 type: 'text',
                 template: (value, row) => row && row.id ? `
-                    <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
+                    <a href="#" class="company-link" data-id="${row.id}" data-type="active">${value || ''}</a>
                 ` : value || ''
             },
             {
@@ -144,7 +148,7 @@
                 label: 'Business',
                 type: 'text',
                 template: (value, row) => row && row.id ? `
-                    <a href="/projects/${row.id}" class="company-link">${value || ''}</a>
+                    <a href="#" class="company-link" data-id="${row.id}" data-type="mentor">${value || ''}</a>
                 ` : value || ''
             },
             {
@@ -317,7 +321,7 @@
                 .order('created_at', { ascending: false });
             
             if (activeError) throw activeError;
-            activeProjects = activeData;
+            activeProjects = activeData || [];
 
             // Load mentor to launch projects
             const { data: mentorData, error: mentorError } = await supabase
@@ -326,7 +330,7 @@
                 .order('created_at', { ascending: false });
             
             if (mentorError) throw mentorError;
-            mentorToLaunchProjects = mentorData;
+            mentorToLaunchProjects = mentorData || [];
 
             // Load pro bono projects
             const { data: proBonoData, error: proBonoError } = await supabase
@@ -335,13 +339,28 @@
                 .order('created_at', { ascending: false });
             
             if (proBonoError) throw proBonoError;
-            proBonoProjects = proBonoData;
+            proBonoProjects = proBonoData || [];
 
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error loading projects:', err);
             error = err.message;
         } finally {
             loading = false;
+            
+            // Add event listeners for company links after data is loaded
+            setTimeout(() => {
+                document.querySelectorAll('.company-link').forEach(link => {
+                    link.addEventListener('click', (e: Event) => {
+                        e.preventDefault();
+                        const target = e.currentTarget as HTMLElement;
+                        const projectId = target.getAttribute('data-id');
+                        const projectType = target.getAttribute('data-type') as 'active' | 'mentor' | 'probono';
+                        if (projectId && projectType) {
+                            openProjectModal(projectId, projectType);
+                        }
+                    });
+                });
+            }, 500);
         }
     }
 
@@ -415,21 +434,30 @@
         console.log('Show analytics for:', row);
     }
 
-    onMount(loadProjects);
+    onMount(async () => {
+        if (!$user) {
+            goto('/login');
+            return;
+        }
+        await loadProjects();
+    });
 
-    // Initialize window.moveProject for the template
-    if (typeof window !== 'undefined') {
-        window.moveProject = async (projectId: string) => {
-            const fromTable = 'active_projects';
-            const targetTable = 'mentor_to_launch_projects';
-            await moveProject(projectId, fromTable, targetTable);
-        };
+    function openProjectModal(projectId: string, projectType: 'active' | 'mentor' | 'probono') {
+        selectedProjectId = projectId;
+        selectedProjectType = projectType;
+        showProjectModal = true;
+    }
+    
+    function handleProjectUpdated() {
+        loadProjects();
     }
 
     function handleAddProject(type: 'active' | 'mentor' | 'probono') {
         selectedProjectType = type;
         showNewProjectModal = true;
     }
+
+
 </script>
 
 <div class="projects-page">
@@ -482,12 +510,23 @@
     {/if}
 </div>
 
-<NewProjectModal
-    bind:show={showNewProjectModal}
-    projectType={selectedProjectType}
-    on:projectAdded={handleProjectAdded}
-    on:close={() => showNewProjectModal = false}
-/>
+{#if showNewProjectModal}
+    <NewProjectModal 
+        bind:show={showNewProjectModal} 
+        projectType={selectedProjectType}
+        on:projectAdded={loadProjects}
+        on:close={() => showNewProjectModal = false}
+    />
+{/if}
+
+{#if showProjectModal}
+    <ProjectModal
+        bind:show={showProjectModal}
+        projectId={selectedProjectId}
+        projectType={selectedProjectType}
+        on:updated={handleProjectUpdated}
+    />
+{/if}
 
 <style>
     .projects-page {
