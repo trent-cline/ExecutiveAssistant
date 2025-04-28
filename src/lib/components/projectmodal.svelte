@@ -74,7 +74,7 @@
                 if (typeof project.milestones === 'string') {
                     try {
                         milestones = JSON.parse(project.milestones);
-                    } catch (e) {
+                    } catch (e: unknown) {
                         milestones = [];
                     }
                 } else {
@@ -98,7 +98,7 @@
                 if (typeof project.team_members === 'string') {
                     try {
                         teamMembers = JSON.parse(project.team_members);
-                    } catch (e) {
+                    } catch (e: unknown) {
                         teamMembers = [];
                     }
                 } else {
@@ -121,11 +121,11 @@
         dispatch('close');
     }
     
-    function formatDate(dateString) {
+    function formatDate(dateString: string): string {
         if (!dateString) return 'N/A';
         try {
             return format(parseISO(dateString), 'MMM d, yyyy');
-        } catch (e) {
+        } catch (e: unknown) {
             return dateString;
         }
     }
@@ -184,7 +184,7 @@
         }
     }
     
-    async function updateMilestone(milestone) {
+    async function updateMilestone(milestone: any) {
         try {
             const index = milestones.findIndex(m => m.id === milestone.id);
             if (index !== -1) {
@@ -285,10 +285,13 @@
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click={closeModal} in:fade={{ duration: 200 }}>
+    <div class="modal-backdrop" on:click={closeModal} on:keydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="-1" in:fade={{ duration: 200 }}>
         <div 
             class="modal-content"
             on:click|stopPropagation
+            on:keydown|stopPropagation
+            role="document"
+            tabindex="0"
             in:fly={{ y: 20, duration: 300 }}
         >
             {#if loading}
@@ -575,7 +578,7 @@
                                                 id="created_at" 
                                                 type="date" 
                                                 value={project.created_at ? project.created_at.split('T')[0] : ''}
-                                                on:change={(e) => project.created_at = e.target.value}
+                                                on:change={(e) => project.created_at = e.currentTarget.value}
                                                 disabled={!editMode}
                                             />
                                         </div>
@@ -586,7 +589,7 @@
                                                 id="target_launch_date" 
                                                 type="date" 
                                                 value={project.target_launch_date ? project.target_launch_date.split('T')[0] : ''}
-                                                on:change={(e) => project.target_launch_date = e.target.value}
+                                                on:change={(e) => project.target_launch_date = e.currentTarget.value}
                                                 disabled={!editMode}
                                             />
                                         </div>
@@ -1191,7 +1194,8 @@
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
-        -webkit-line-clamp: 2;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
         -webkit-box-orient: vertical;
     }
     
