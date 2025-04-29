@@ -2,7 +2,7 @@
     import ProjectsDashboard from '$lib/components/ProjectsDashboard.svelte';
     import DatabaseTable from '$lib/components/DatabaseTable/DatabaseTable.svelte';
     import NewProjectModal from './NewProjectModal.svelte';
-    import ProjectModal from '$lib/components/ProjectModa.svelte';
+    import ProjectModal from '$lib/components/ProjectModal.svelte';
     import { user } from '$lib/auth';
     import { goto } from '$app/navigation';
     import { supabase } from '$lib/supabase';

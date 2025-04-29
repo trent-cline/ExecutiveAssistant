@@ -2,7 +2,7 @@
 import { onMount } from 'svelte';
 import { supabase } from '$lib/supabase';
 import GanttChart from '$lib/components/GanttChart.svelte';
-import ProjectModal from '$lib/components/ProjectModa.svelte';
+import ProjectModal from '$lib/components/ProjectModal.svelte';
 interface GanttTask {
     id: string;
     name: string;
