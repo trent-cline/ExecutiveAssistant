@@ -108,9 +108,9 @@
                 teamMembers = [];
             }
             
-        } catch (e) {
+        } catch (e: unknown) {
             console.error('Error loading project:', e);
-            error = e.message;
+            error = e instanceof Error ? e.message : 'Unknown error occurred';
         } finally {
             loading = false;
         }
@@ -178,9 +178,9 @@
             
             dispatch('updated');
             
-        } catch (e) {
+        } catch (e: unknown) {
             console.error('Error adding milestone:', e);
-            error = e.message;
+            error = e instanceof Error ? e.message : 'Unknown error occurred';
         }
     }
     
@@ -210,9 +210,9 @@
                 currentMilestone = null;
                 dispatch('updated');
             }
-        } catch (e) {
+        } catch (e: unknown) {
             console.error('Error updating milestone:', e);
-            error = e.message;
+            error = e instanceof Error ? e.message : 'Unknown error occurred';
         }
     }
     
@@ -239,11 +239,11 @@
             
         } catch (e) {
             console.error('Error adding note:', e);
-            error = e.message;
+            error = e instanceof Error ? e.message : 'Unknown error occurred';
         }
     }
     
-    function editMilestone(milestone) {
+    function editMilestone(milestone: any) {
         currentMilestone = { ...milestone };
         showMilestoneModal = true;
     }
@@ -269,13 +269,13 @@
             editMode = false;
             dispatch('updated');
             
-        } catch (e) {
+        } catch (e: unknown) {
             console.error('Error updating project:', e);
-            error = e.message;
+            error = e instanceof Error ? e.message : 'Unknown error occurred';
         }
     }
     
-    function getDaysRemaining(dateString) {
+    function getDaysRemaining(dateString: string) {
         if (!dateString) return 'No date set';
         const days = differenceInDays(parseISO(dateString), new Date());
         if (days < 0) return 'Overdue';
@@ -285,13 +285,11 @@
 </script>
 
 {#if show}
-    <div class="modal-backdrop" on:click={closeModal} on:keydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="-1" in:fade={{ duration: 200 }}>
+    <div class="modal-backdrop" role="dialog" aria-modal="true" in:fade={{ duration: 200 }}>
+        <button class="modal-close-overlay" on:click={closeModal} aria-label="Close modal"></button>
         <div 
             class="modal-content"
-            on:click|stopPropagation
-            on:keydown|stopPropagation
             role="document"
-            tabindex="0"
             in:fly={{ y: 20, duration: 300 }}
         >
             {#if loading}
@@ -320,37 +318,37 @@
                     </div>
                     <div class="header-actions">
                         {#if !editMode}
-                            <button class="edit-button" on:click={() => editMode = true}>
+                            <button type="button" class="edit-button" on:click|preventDefault={() => editMode = true}>
                                 <i class="fas fa-pencil"></i> Edit
                             </button>
                         {:else}
-                            <button class="save-button" on:click={updateProject}>
+                            <button type="button" class="save-button" on:click|preventDefault={updateProject}>
                                 <i class="fas fa-save"></i> Save
                             </button>
-                            <button class="cancel-button" on:click={() => editMode = false}>
+                            <button type="button" class="cancel-button" on:click|preventDefault={() => editMode = false}>
                                 <i class="fas fa-times"></i> Cancel
                             </button>
                         {/if}
-                        <button class="close-button" on:click={closeModal}>
+                        <button type="button" class="close-button" on:click|preventDefault={closeModal}>
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                 </div>
                 
                 <div class="tabs">
-                    <button class="tab-button" class:active={activeTab === 'overview'} on:click={() => activeTab = 'overview'}>
+                    <button type="button" class="tab-button" class:active={activeTab === 'overview'} on:click|preventDefault={() => activeTab = 'overview'}>
                         <i class="fas fa-home"></i> Overview
                     </button>
-                    <button class="tab-button" class:active={activeTab === 'details'} on:click={() => activeTab = 'details'}>
+                    <button type="button" class="tab-button" class:active={activeTab === 'details'} on:click|preventDefault={() => activeTab = 'details'}>
                         <i class="fas fa-info-circle"></i> Details
                     </button>
-                    <button class="tab-button" class:active={activeTab === 'milestones'} on:click={() => activeTab = 'milestones'}>
+                    <button type="button" class="tab-button" class:active={activeTab === 'milestones'} on:click|preventDefault={() => activeTab = 'milestones'}>
                         <i class="fas fa-flag"></i> Milestones
                     </button>
-                    <button class="tab-button" class:active={activeTab === 'notes'} on:click={() => activeTab = 'notes'}>
+                    <button type="button" class="tab-button" class:active={activeTab === 'notes'} on:click|preventDefault={() => activeTab = 'notes'}>
                         <i class="fas fa-sticky-note"></i> Notes
                     </button>
-                    <button class="tab-button" class:active={activeTab === 'team'} on:click={() => activeTab = 'team'}>
+                    <button type="button" class="tab-button" class:active={activeTab === 'team'} on:click|preventDefault={() => activeTab = 'team'}>
                         <i class="fas fa-users"></i> Team
                     </button>
                 </div>
@@ -841,6 +839,18 @@
 {/if}
 
 <style>
+    .modal-close-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        z-index: 1;
+    }
+    
     .modal-backdrop {
         position: fixed;
         top: 0;
